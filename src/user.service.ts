@@ -1,4 +1,9 @@
-import { ConflictException, Injectable } from '@nestjs/common';
+import {
+  ConflictException,
+  Injectable,
+  NotFoundException,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { PrismaService } from './prisma.service';
 import { User } from './user.model';
 import * as bcrypt from 'bcrypt';
@@ -31,6 +36,7 @@ export class UserService {
         email: data.email,
       },
     });
+
     if (existing) {
       throw new ConflictException('email already exist');
     }
@@ -55,4 +61,25 @@ export class UserService {
       where: { id: Number(id) },
     });
   }
+
+  async deleteUserByEmailAndPassword(
+    email: string,
+    password: string,
+  ): Promise<void> {
+    const user = await this.prisma.user.findUnique({ where: { email } });
+
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    const validPassword = await bcrypt.compare(password, user.password);
+
+    if (!validPassword) {
+      throw new UnauthorizedException('Invalid password');
+    }
+
+
+    await this.prisma.user.delete({ where: { id: user.id } });
+  }
+
 }

@@ -28,10 +28,12 @@ export class UserController {
   async getUser(@Param('id') id: number): Promise<User | null> {
     return this.userService.getUser(id);
   }
+  
   @Delete(':id')
   async deleteUser(@Param('id') id: number): Promise<User | null> {
     return this.userService.deleteUser(id);
   }
+
 
   @Put(':id')
   async updateUser(
