@@ -62,14 +62,19 @@ export class UserService {
     });
   }
 
-  async deleteUserByEmailAndPassword(
+  async deleteUserByIdAndCredentials(
+    userId: number,
     email: string,
     password: string,
   ): Promise<void> {
-    const user = await this.prisma.user.findUnique({ where: { email } });
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
 
     if (!user) {
       throw new NotFoundException('User not found');
+    }
+
+    if (user.email !== email) {
+      throw new UnauthorizedException('Invalid credentials');
     }
 
     const validPassword = await bcrypt.compare(password, user.password);
@@ -78,8 +83,6 @@ export class UserService {
       throw new UnauthorizedException('Invalid password');
     }
 
-
     await this.prisma.user.delete({ where: { id: user.id } });
   }
-
 }

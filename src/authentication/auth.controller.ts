@@ -101,12 +101,32 @@ export class AuthController {
   async deleteUserByEmailAndPassword(
     @Req() request: Request,
     @Res() response: Response,
+    @Headers('authorization') authorization: string,
     @Body() { email, password }: { email: string; password: string },
   ): Promise<any> {
     try {
-      
+      const token = authorization?.split(' ')[1]; // Extracting token from header
+      if (token) {
+        try {
+          const decodedToken: any = this.jwtService.verify(token);
 
-      await this.userService.deleteUserByEmailAndPassword(email, password);
+          const userId = decodedToken.id;
+          await this.userService.deleteUserByIdAndCredentials(
+            userId,
+            email,
+            password,
+          );
+        } catch (error) {
+          console.error(error);
+          return response.status(401).json({
+            status: 'Error!',
+            message: 'Invalid token or token missing',
+          });
+        }
+      } else {
+        // Handle missing authorization header (e.g., throw an error)
+        throw new UnauthorizedException('Authorization header is missing');
+      }
 
       return response.status(200).json({
         status: 'Ok!',
