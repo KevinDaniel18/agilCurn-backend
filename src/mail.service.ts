@@ -27,13 +27,14 @@ export class MailService {
 
   async sendPasswordResetEmail(
     email: string,
-    repeatPassword: string,
+    resetToken: string,
   ): Promise<void> {
+    const resetLink = `http://192.168.1.6:5173/reset-password?token=${resetToken}`;
     const mailOptions = {
       from: 'kevnsc18@gmail.com',
       to: email,
       subject: 'Password Recovery',
-      text: `Your password is ${repeatPassword}`,
+      html: `Click <a href="${resetLink}">here</a> to reset your password.`,
     };
 
     await this.transporter.sendMail(mailOptions);

@@ -12,6 +12,8 @@ import { RegisterUserDto } from './dto/register-user.dto';
 import { User } from 'src/user.model';
 import { MailService } from 'src/mail.service';
 import * as uuid from 'uuid';
+import { ResetPasswordDto } from './dto/reset.password.dto';
+import * as jwt from 'jsonwebtoken';
 
 @Injectable()
 export class AuthService {
@@ -52,7 +54,6 @@ export class AuthService {
     };
   }
 
-
   async sendWelcomeEmail(email: string, fullname: string): Promise<void> {
     await this.mailService.welcomeEmail(email, fullname);
   }
@@ -80,24 +81,91 @@ export class AuthService {
       throw new NotFoundException('User not found');
     }
 
-    const resetToken = this.generateResetToken();
-    await this.saveResetToken(user.id, resetToken);
-    await this.mailService.sendPasswordResetEmail(
-      user.email,
-      user.repeatPassword,
-    );
+    const payload = { userId: user.id };
+    const secretKey = 'clavesecreta';
+    const token = jwt.sign(payload, secretKey, { expiresIn: '10h' });
+    await this.saveResetToken(user.id, token);
+    await this.mailService.sendPasswordResetEmail(user.email, token);
   }
 
   // Función para generar un token único para la recuperación de contraseña
-  private generateResetToken(): string {
-    // Implementar la lógica para generar un token único
-    // Por ejemplo, puedes usar una librería como `uuid` para generar un UUID único
-    const resetToken = uuid.v4();
-    return resetToken;
-  }
+  // private generateResetToken(): string {
+  //   return uuid.v4();
+  // }
 
   // Función para guardar el token de recuperación de contraseña en la base de datos (no implementada aquí)
   async saveResetToken(userId: number, resetToken: string): Promise<void> {
-    // Implementar la lógica para guardar el token asociado al usuario en la base de datos
+    const payload = { userId: userId, resetToken: resetToken };
+    const secretKey = 'clavesecreta';
+    const token = jwt.sign(payload, secretKey);
+    await this.prismaService.user.update({
+      where: { id: userId },
+      data: { resetToken: token, resetUsed: false },
+    });
+  }
+
+  async resetPassword(resetPasswordDto: ResetPasswordDto): Promise<void> {
+    const { token, newPassword } = resetPasswordDto;
+
+    // Verificar y decodificar el token
+    const userId = await this.verifyResetToken(token);
+    console.log(userId);
+
+    const user = await this.prismaService.user.findUnique({
+      where: { id: userId },
+      select: { resetUsed: true },
+    });
+
+    if (user.resetUsed) {
+      throw new Error('Reset token has already been used');
+    }
+
+    // Actualizar la contraseña en la base de datos
+    await this.prismaService.user.update({
+      where: { id: userId },
+      data: {
+        password: await bcrypt.hash(newPassword, 10),
+        resetUsed: true,
+      },
+    });
+
+    await this.invalidateResetToken(userId);
+  }
+
+  async invalidateResetToken(userId: number): Promise<void> {
+    // Eliminar el token de reinicio de la base de datos
+    await this.prismaService.user.update({
+      where: { id: userId },
+      data: { resetToken: null },
+    });
+  }
+
+  async verifyResetToken(token: string): Promise<number> {
+    try {
+      // Decodificar el token para obtener el payload
+      const decodedToken: any = jwt.verify(token, 'clavesecreta');
+      console.log('Decoded token:', decodedToken);
+
+      // Verificar si el token incluye el ID de usuario
+      if (!decodedToken || !decodedToken.userId) {
+        throw new Error('Invalid token');
+      }
+
+      // Verificar si el usuario existe en la base de datos
+      const userId = parseInt(decodedToken.userId);
+      const user = await this.prismaService.user.findUnique({
+        where: { id: userId },
+      });
+
+      if (!user) {
+        throw new NotFoundException('User not found');
+      }
+
+      // Devolver el ID de usuario si todo es válido
+      return userId;
+    } catch (error) {
+      console.log('Error verifying reset token:', error.message);
+      throw new Error('Invalid token');
+    }
   }
 }

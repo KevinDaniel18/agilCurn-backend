@@ -16,6 +16,7 @@ import { RegisterUserDto } from './dto/register-user.dto';
 import { ForgotPasswordDto } from './dto/forgot-password.dto';
 import { UserService } from 'src/user.service';
 import { JwtService } from '@nestjs/jwt';
+import { ResetPasswordDto } from './dto/reset.password.dto';
 
 @Controller('/auth')
 export class AuthController {
@@ -96,6 +97,32 @@ export class AuthController {
       });
     }
   }
+
+  @Post('/reset-password')
+  async resetPassword(
+    @Req() request: Request,
+    @Res() response: Response,
+    @Body() resetPasswordDto: ResetPasswordDto, // Define DTO si es necesario
+  ): Promise<any> {
+    try {
+      const {token, newPassword} = resetPasswordDto
+      
+      console.log("Token received:", token);
+      
+      await this.authService.resetPassword(resetPasswordDto);
+      return response.status(200).json({
+        status: 'Ok!',
+        message: 'Password reset successfully!',
+      });
+    } catch (error) {
+      console.log(error);
+      return response.status(500).json({
+        status: 'Error!',
+        message: 'Internal Server Error!',
+      });
+    }
+  }
+  
 
   @Delete('/delete-by-email-password')
   async deleteUserByEmailAndPassword(
