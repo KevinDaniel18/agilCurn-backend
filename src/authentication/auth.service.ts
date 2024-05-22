@@ -11,7 +11,6 @@ import * as bcrypt from 'bcrypt';
 import { RegisterUserDto } from './dto/register-user.dto';
 import { User } from 'src/user.model';
 import { MailService } from 'src/mail.service';
-import * as uuid from 'uuid';
 import { ResetPasswordDto } from './dto/reset.password.dto';
 import * as jwt from 'jsonwebtoken';
 
@@ -82,21 +81,15 @@ export class AuthService {
     }
 
     const payload = { userId: user.id };
-    const secretKey = 'clavesecreta';
+    const secretKey = process.env.JWT_SECRET;
     const token = jwt.sign(payload, secretKey, { expiresIn: '10h' });
     await this.saveResetToken(user.id, token);
     await this.mailService.sendPasswordResetEmail(user.email, token);
   }
 
-  // Función para generar un token único para la recuperación de contraseña
-  // private generateResetToken(): string {
-  //   return uuid.v4();
-  // }
-
-  // Función para guardar el token de recuperación de contraseña en la base de datos (no implementada aquí)
   async saveResetToken(userId: number, resetToken: string): Promise<void> {
     const payload = { userId: userId, resetToken: resetToken };
-    const secretKey = 'clavesecreta';
+    const secretKey = process.env.JWT_SECRET;
     const token = jwt.sign(payload, secretKey);
     await this.prismaService.user.update({
       where: { id: userId },
@@ -143,7 +136,7 @@ export class AuthService {
   async verifyResetToken(token: string): Promise<number> {
     try {
       // Decodificar el token para obtener el payload
-      const decodedToken: any = jwt.verify(token, 'clavesecreta');
+      const decodedToken: any = jwt.verify(token, process.env.JWT_SECRET);
       console.log('Decoded token:', decodedToken);
 
       // Verificar si el token incluye el ID de usuario
@@ -167,5 +160,11 @@ export class AuthService {
       console.log('Error verifying reset token:', error.message);
       throw new Error('Invalid token');
     }
+  }
+
+  // auth.service.ts
+
+  async addMemberEmail(recipients:{email: string, fullname: string}[], projectName: string ): Promise<void> {
+    await this.mailService.addMemberEmail(recipients, projectName);
   }
 }

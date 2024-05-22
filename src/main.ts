@@ -9,6 +9,7 @@ async function bootstrap() {
       'http://192.168.1.6:3000',
       'http://localhost:5173',
       'http://192.168.1.6:5173',
+      'http://localhost:8081',
     ],
     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
     preflightContinue: false,

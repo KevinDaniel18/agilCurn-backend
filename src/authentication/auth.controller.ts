@@ -5,9 +5,13 @@ import {
   Headers,
   NotFoundException,
   Post,
+  Get,
+  Query,
   Req,
   Res,
   UnauthorizedException,
+  Param,
+  HttpStatus,
 } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { LoginDto } from './dto/login-user.dto';
@@ -105,10 +109,10 @@ export class AuthController {
     @Body() resetPasswordDto: ResetPasswordDto, // Define DTO si es necesario
   ): Promise<any> {
     try {
-      const {token, newPassword} = resetPasswordDto
-      
-      console.log("Token received:", token);
-      
+      const { token, newPassword } = resetPasswordDto;
+
+      console.log('Token received:', token);
+
       await this.authService.resetPassword(resetPasswordDto);
       return response.status(200).json({
         status: 'Ok!',
@@ -122,7 +126,6 @@ export class AuthController {
       });
     }
   }
-  
 
   @Delete('/delete-by-email-password')
   async deleteUserByEmailAndPassword(
@@ -166,5 +169,95 @@ export class AuthController {
         message: 'Internal Server Error!',
       });
     }
+  }
+
+  // @Post('/search-by-email')
+  // async searchUserByEmail(
+  //   @Req() request: Request,
+  //   @Res() response: Response,
+  //   @Query('email') email: string,
+  //   @Query('projectName') projectName: string,
+  // ): Promise<any> {
+  //   try {
+  //     if (!email) {
+  //       throw new NotFoundException('Email parameter is missing');
+  //     }
+  //     const user = await this.userService.getUserByEmail(email);
+
+  //     if (!user) {
+  //       throw new NotFoundException('User not found');
+  //     }
+
+  //     // Enviar correo electrónico al usuario encontrado
+  //     await this.authService.addMemberEmail(
+  //       user.email,
+  //       user.fullname,
+  //       projectName,
+  //     );
+
+  //     return response.status(200).json({
+  //       status: 'Ok!',
+  //       message: 'User found and email sent!',
+  //       user: user,
+  //     });
+  //   } catch (error) {
+  //     console.log(error);
+  //     return response.status(500).json({
+  //       status: 'Error!',
+  //       message: 'Internal Server Error!',
+  //     });
+  //   }
+  // }
+
+  @Post('/invite-to-project')
+  async inviteToProject(
+    @Req() request: Request,
+    @Res() response: Response,
+    @Body()
+    { emails, projectName }: { emails: string[]; projectName: string },
+  ): Promise<any> {
+    try {
+      // Lógica para invitar al usuario al proyecto
+      const recipients = await Promise.all(
+        emails.map(async(email)=>{
+
+          const user = await this.userService.getUserByEmail(email);
+          return {email, fullname: user ? user.fullname: "User"}
+        })
+      )
+      await this.authService.addMemberEmail(recipients, projectName);
+
+      return response.status(200).json({
+        status: 'Ok!',
+        message: 'Invitation sent successfully!',
+        invitedUserName: recipients,
+      });
+    } catch (error) {
+      console.log(error);
+      return response.status(500).json({
+        status: 'Error!',
+        message: 'Internal Server Error!',
+      });
+    }
+  }
+
+  @Get('invitation-confirmation')
+  async handleInvitationConfirmation(
+    @Res() res: Response,
+    @Query('email') email: string,
+    @Query('name') name: string,
+  ): Promise<any> {
+    const user = await this.userService.getUserByEmail(email);
+    if (user === null) {
+      return res.status(404).json({
+        status: 'Error',
+        message: 'User not found',
+      });
+    }
+    return res.status(200).json({
+      status: 'Ok!',
+      message: `¡Hola, ${name}! Invitación aceptada.`,
+      name: user.fullname,
+    });
   }
 }
