@@ -10,7 +10,4 @@ export class RegisterUserDto {
   @IsString()
   @Length(6, 20)
   password: string;
-  @IsString()
-  @Length(6, 20)
-  repeatPassword: string;
 }

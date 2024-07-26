@@ -14,11 +14,68 @@ datasource db {
 }
 
 model User {
-  id             Int     @id @default(autoincrement())
-  fullname       String
-  email          String  @unique
-  password       String  @db.VarChar(255)
-  repeatPassword String  @db.VarChar(255)
-  resetToken     String?
-  resetUsed Boolean? @default(false)
+  id               Int                   @id @default(autoincrement())
+  fullname         String
+  email            String                @unique
+  password         String                @db.VarChar(255)
+  resetToken       String?
+  resetUsed        Boolean?              @default(false)
+  sentMessages     Message[]             @relation("SentMessages")
+  receivedMessages Message[]             @relation("ReceivedMessages")
+  invitations      InvitationToProject[] @relation("InvitedProjects")
+  createdProjects  Project[]             @relation("CreatedProjects")
+  assignedTasks    Task[]                @relation("AssignedTasks")
+  tasks            Task[]                @relation("TaskCreator")
+  profileImage     String?
+}
+
+model Message {
+  id        Int      @id @default(autoincrement())
+  createdAt DateTime @default(now())
+  message   String
+  fromId    Int
+  from      User     @relation("SentMessages", fields: [fromId], references: [id])
+  toId      Int
+  to        User     @relation("ReceivedMessages", fields: [toId], references: [id])
+  deletedBy Int?
+}
+
+model Project {
+  id          Int                   @id @default(autoincrement())
+  projectName String
+  startDate   DateTime
+  endDate     DateTime
+  invitations InvitationToProject[]
+  creatorId   Int
+  creator     User                  @relation("CreatedProjects", fields: [creatorId], references: [id])
+  tasks       Task[]                @relation("ProjectTasks")
+}
+
+model InvitationToProject {
+  id        Int      @id @default(autoincrement())
+  projectId Int
+  project   Project  @relation(fields: [projectId], references: [id])
+  invitedId Int
+  invited   User     @relation("InvitedProjects", fields: [invitedId], references: [id])
+  confirmed Boolean  @default(false)
+  createdAt DateTime @default(now())
+}
+
+model Task {
+  id          Int        @id @default(autoincrement())
+  title       String
+  description String?
+  status      TaskStatus @default(TODO)
+  projectId   Int
+  project     Project    @relation("ProjectTasks", fields: [projectId], references: [id], onDelete: Cascade)
+  assigneeId  Int?
+  assignee    User?      @relation("AssignedTasks", fields: [assigneeId], references: [id])
+  creatorId   Int
+  creator     User       @relation("TaskCreator", fields: [creatorId], references: [id], onDelete: Cascade)
+}
+
+enum TaskStatus {
+  TODO
+  IN_PROGRESS
+  DONE
 }

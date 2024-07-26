@@ -106,7 +106,7 @@ export class AuthController {
   async resetPassword(
     @Req() request: Request,
     @Res() response: Response,
-    @Body() resetPasswordDto: ResetPasswordDto, // Define DTO si es necesario
+    @Body() resetPasswordDto: ResetPasswordDto, 
   ): Promise<any> {
     try {
       const { token, newPassword } = resetPasswordDto;
@@ -135,7 +135,7 @@ export class AuthController {
     @Body() { email, password }: { email: string; password: string },
   ): Promise<any> {
     try {
-      const token = authorization?.split(' ')[1]; // Extracting token from header
+      const token = authorization?.split(' ')[1]; 
       if (token) {
         try {
           const decodedToken: any = this.jwtService.verify(token);

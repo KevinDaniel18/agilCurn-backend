@@ -5,7 +5,7 @@ export class User implements Prisma.UserCreateInput {
   fullname: string;
   email: string;
   password: string;
-  repeatPassword: string;
   resetToken?: string;
   resetUsed?: boolean;
+  profileImage?: string;
 }

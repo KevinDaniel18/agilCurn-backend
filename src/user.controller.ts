@@ -3,6 +3,7 @@ import {
   Controller,
   Delete,
   Get,
+  NotFoundException,
   Param,
   Post,
   Put,
@@ -28,12 +29,11 @@ export class UserController {
   async getUser(@Param('id') id: number): Promise<User | null> {
     return this.userService.getUser(id);
   }
-  
+
   @Delete(':id')
   async deleteUser(@Param('id') id: number): Promise<User | null> {
     return this.userService.deleteUser(id);
   }
-
 
   @Put(':id')
   async updateUser(
@@ -42,4 +42,13 @@ export class UserController {
   ): Promise<User> {
     return this.userService.updateUser(id, putData);
   }
+
+  @Put(':id/profile-image')
+  async updateProfileImage(
+    @Param('id') id: string,
+    @Body('imageUrl') imageUrl: string,
+  ) {
+    return this.userService.updateUserProfileImage(Number(id), imageUrl);
+  }
+  
 }

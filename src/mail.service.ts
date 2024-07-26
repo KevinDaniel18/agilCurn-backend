@@ -57,7 +57,7 @@ export class MailService {
     email: string,
     resetToken: string,
   ): Promise<void> {
-    const resetLink = `http://192.168.1.6:5173/reset-password?token=${resetToken}`;
+    const resetLink = `http://192.168.1.10:5173/reset-password?token=${resetToken}`;
     const mailOptions = {
       from: 'kevnsc18@gmail.com',
       to: email,
@@ -110,7 +110,7 @@ export class MailService {
     projectName: string,
   ): Promise<void> {
     for (const { email, fullname } of recipients) {
-      const invitationLink = `http://192.168.1.6:3000/auth/invitation-confirmation?email=${encodeURIComponent(
+      const invitationLink = `http://192.168.1.10:3000/auth/invitation-confirmation?email=${encodeURIComponent(
         email,
       )}&name=${encodeURIComponent(fullname)}`;
       const mailOptions = {
@@ -159,5 +159,17 @@ export class MailService {
 
       await this.transporter.sendMail(mailOptions);
     }
+  }
+
+  async sendInvitationEmail(
+    to: string,
+    confirmationLink: string,
+  ): Promise<void> {
+    await this.transporter.sendMail({
+      to,
+      subject: 'Project Invitation',
+      html: `<p>You have been invited to join a project. Click the link below to accept the invitation:</p>
+             <a href="${confirmationLink}">Accept Invitation</a>`,
+    });
   }
 }

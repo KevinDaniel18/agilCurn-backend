@@ -46,10 +46,12 @@ export class AuthService {
       throw new UnauthorizedException('invalid password');
     }
 
-    const token = this.jwtService.sign({ email: users.email, id: users.id });
+    const token = this.jwtService.sign({ email: users.email, id: users.id, name: users.fullname });
 
     return {
       token,
+      userId: users.id,
+      fullname: users.fullname
     };
   }
 
@@ -62,7 +64,6 @@ export class AuthService {
     createUsers.fullname = createDto.fullname;
     createUsers.email = createDto.email;
     createUsers.password = await bcrypt.hash(createDto.password, 10);
-    createUsers.repeatPassword = createDto.repeatPassword;
 
     const user = await this.userService.createUser(createUsers);
     console.log(user);
