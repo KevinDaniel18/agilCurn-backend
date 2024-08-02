@@ -22,16 +22,7 @@ interface TypingPayload {
 }
 
 @WebSocketGateway({
-  cors: {
-    origin: [
-      'https://agilcurn-backend.onrender.com',
-      'https://new-password-agil-curn.vercel.app',
-      'http://localhost:3000',
-    ],
-    methods: ['GET', 'POST'],
-    allowedHeaders: ['Content-Type', 'Authorization'],
-    credentials: true,
-  },
+  cors: true,
 })
 export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
   @WebSocketServer()
@@ -48,6 +39,8 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
     const token = client.handshake.query.token as string;
     try {
       const decoded = this.jwtService.verify(token);
+      console.log(decoded);
+      
       client.data.user = decoded;
       this.users.set(decoded.id, client);
       console.log('Client connected:', decoded);
