@@ -8,10 +8,13 @@ COPY package*.json ./
 RUN npm install
 
 
-# Bundle app source
+# Bundle app sources
 COPY . .
 
-RUN npx prisma generate
+COPY prisma ./prisma
+
+RUN npx prisma generate --verbose
+
 # Creates a "dist" folder with the production build
 RUN npm run build
 
