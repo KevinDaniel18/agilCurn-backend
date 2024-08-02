@@ -24,7 +24,7 @@ interface TypingPayload {
 @WebSocketGateway({
   cors: {
     origin: [
-      'https://agil-curn-backend.vercel.app',
+      'https://agilcurn-backend.onrender.com',
       'https://new-password-agil-curn.vercel.app',
       'http://localhost:3000',
     ],
