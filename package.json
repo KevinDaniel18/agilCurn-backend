@@ -7,7 +7,6 @@
   "license": "UNLICENSED",
   "scripts": {
     "build": "nest build",
-    "postinstall": "prisma generate",
     "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
     "start": "nest start",
     "start:dev": "nest start --watch",
@@ -92,6 +91,6 @@
     "testEnvironment": "node"
   },
   "prisma": {
-    "schema": "prisma/schema.prisma"
+    "schema": "./prisma/schema.prisma"
   }
 }

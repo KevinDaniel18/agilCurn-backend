@@ -2,24 +2,16 @@ FROM node:20-alpine
 
 WORKDIR /app
 
+# Copy package files first for faster installs
 COPY package*.json ./
-
-# Install app dependencies
 RUN npm install
 
-
-# Bundle app sources
+# Copy the entire project, including prisma directory
 COPY . .
 
-COPY prisma ./prisma
+# Generate Prisma Client
+RUN npx prisma generate
 
-RUN npx prisma generate --verbose
-
-# Creates a "dist" folder with the production build
-RUN npm run build
-
-# Expose the port on which the app will run
 EXPOSE 3000
 
-# Start the server using the production build
-CMD ["npm", "run", "start:prod"]
+CMD [ "npm", "run", "start:prod" ]
