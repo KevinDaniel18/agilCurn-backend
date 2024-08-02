@@ -209,37 +209,37 @@ export class AuthController {
   //   }
   // }
 
-  @Post('/invite-to-project')
-  async inviteToProject(
-    @Req() request: Request,
-    @Res() response: Response,
-    @Body()
-    { emails, projectName }: { emails: string[]; projectName: string },
-  ): Promise<any> {
-    try {
-      // Lógica para invitar al usuario al proyecto
-      const recipients = await Promise.all(
-        emails.map(async(email)=>{
+  // @Post('/invite-to-project')
+  // async inviteToProject(
+  //   @Req() request: Request,
+  //   @Res() response: Response,
+  //   @Body()
+  //   { emails, projectName }: { emails: string[]; projectName: string },
+  // ): Promise<any> {
+  //   try {
+  //     // Lógica para invitar al usuario al proyecto
+  //     const recipients = await Promise.all(
+  //       emails.map(async(email)=>{
 
-          const user = await this.userService.getUserByEmail(email);
-          return {email, fullname: user ? user.fullname: "User"}
-        })
-      )
-      await this.authService.addMemberEmail(recipients, projectName);
+  //         const user = await this.userService.getUserByEmail(email);
+  //         return {email, fullname: user ? user.fullname: "User"}
+  //       })
+  //     )
+  //     await this.authService.addMemberEmail(recipients, projectName);
 
-      return response.status(200).json({
-        status: 'Ok!',
-        message: 'Invitation sent successfully!',
-        invitedUserName: recipients,
-      });
-    } catch (error) {
-      console.log(error);
-      return response.status(500).json({
-        status: 'Error!',
-        message: 'Internal Server Error!',
-      });
-    }
-  }
+  //     return response.status(200).json({
+  //       status: 'Ok!',
+  //       message: 'Invitation sent successfully!',
+  //       invitedUserName: recipients,
+  //     });
+  //   } catch (error) {
+  //     console.log(error);
+  //     return response.status(500).json({
+  //       status: 'Error!',
+  //       message: 'Internal Server Error!',
+  //     });
+  //   }
+  // }
 
   @Get('invitation-confirmation')
   async handleInvitationConfirmation(

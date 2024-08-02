@@ -6,13 +6,14 @@ async function bootstrap() {
   const app = await NestFactory.create(AppModule);
   const corsOptions: CorsOptions = {
     origin: [
-      'https://agil-curn-backend.vercel.app',
-      'http://localhost:5173',
+      'https://new-password-agil-curn.vercel.app',
       'http://192.168.1.17:5173',
+      'http://192.168.1.17:3000',
       'http://localhost:8081',
       'http://192.168.1.17:8081',
     ],
     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
+    allowedHeaders: 'Content-Type, Authorization',
     preflightContinue: false,
     optionsSuccessStatus: 204,
   };

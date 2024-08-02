@@ -165,7 +165,7 @@ export class AuthService {
 
   // auth.service.ts
 
-  async addMemberEmail(recipients:{email: string, fullname: string}[], projectName: string ): Promise<void> {
-    await this.mailService.addMemberEmail(recipients, projectName);
-  }
+  // async addMemberEmail(recipients:{email: string, fullname: string}[], projectName: string ): Promise<void> {
+  //   await this.mailService.addMemberEmail(recipients, projectName);
+  // }
 }

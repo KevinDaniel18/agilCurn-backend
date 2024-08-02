@@ -21,7 +21,18 @@ interface TypingPayload {
   typing: boolean;
 }
 
-@WebSocketGateway({ cors: true })
+@WebSocketGateway({
+  cors: {
+    origin: [
+      'https://agil-curn-backend.vercel.app',
+      'https://new-password-agil-curn.vercel.app',
+      'http://localhost:3000',
+    ],
+    methods: ['GET', 'POST'],
+    allowedHeaders: ['Content-Type', 'Authorization'],
+    credentials: true,
+  },
+})
 export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
   @WebSocketServer()
   server: Server;
@@ -62,7 +73,6 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
     const user = client.data.user;
     const targetSocket = this.users.get(chatMessage.to);
     try {
-      
       const sender = await this.chatService.findUserById(user.id);
       await this.chatService.saveMessage(
         user.id,
@@ -93,7 +103,10 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
     const user = client.data.user;
     const targetSocket = this.users.get(typingPayload.to);
     if (targetSocket) {
-      targetSocket.emit('typing', { from: user.id, typing: typingPayload.typing });
+      targetSocket.emit('typing', {
+        from: user.id,
+        typing: typingPayload.typing,
+      });
     }
   }
 }

@@ -57,7 +57,7 @@ export class MailService {
     email: string,
     resetToken: string,
   ): Promise<void> {
-    const resetLink = `http://192.168.1.10:5173/reset-password?token=${resetToken}`;
+    const resetLink = `https://new-password-agil-curn.vercel.app/reset-password?token=${resetToken}`;
     const mailOptions = {
       from: 'kevnsc18@gmail.com',
       to: email,
@@ -105,61 +105,61 @@ export class MailService {
     await this.transporter.sendMail(mailOptions);
   }
 
-  async addMemberEmail(
-    recipients: { email: string; fullname: string }[],
-    projectName: string,
-  ): Promise<void> {
-    for (const { email, fullname } of recipients) {
-      const invitationLink = `http://192.168.1.10:3000/auth/invitation-confirmation?email=${encodeURIComponent(
-        email,
-      )}&name=${encodeURIComponent(fullname)}`;
-      const mailOptions = {
-        from: 'kevnsc18@gmail.com',
-        to: email,
-        subject: `¡Hola, ${fullname}! Has sido invitado al proyecto ${projectName}`,
-        html: `
-        <html>
-            <head>
-                <style>
-                    body {
-                        font-family: Arial, sans-serif;
-                        background-color: #f5f5f5;
-                        padding: 20px;
-                    }
-                    .container {
-                        background-color: #fff;
-                        border-radius: 8px;
-                        padding: 20px;
-                        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-                    }
-                    h1 {
-                        color: #333;
-                    }
-                    .invitation-link {
-                        margin-top: 20px;
-                    }
-                    .invitation-link a {
-                        color: #007bff;
-                        text-decoration: none;
-                        font-weight: bold;
-                    }
-                </style>
-            </head>
-            <body>
-                <div class="container">
-                    <h1>¡Hola, ${fullname}!</h1>
-                    <p>Has sido invitado al proyecto <b>${projectName}</b>.</p>
-                    <p>Para ingresar al proyecto, haz clic en el siguiente enlace:</p>
-                    <p class="invitation-link"><a href="${invitationLink}">Ingresar al proyecto</a></p>
-                </div>
-            </body>
-        </html>
-        `,
-      };
+  // async addMemberEmail(
+  //   recipients: { email: string; fullname: string }[],
+  //   projectName: string,
+  // ): Promise<void> {
+  //   for (const { email, fullname } of recipients) {
+  //     const invitationLink = `http://192.168.1.10:3000/auth/invitation-confirmation?email=${encodeURIComponent(
+  //       email,
+  //     )}&name=${encodeURIComponent(fullname)}`;
+  //     const mailOptions = {
+  //       from: 'kevnsc18@gmail.com',
+  //       to: email,
+  //       subject: `¡Hola, ${fullname}! Has sido invitado al proyecto ${projectName}`,
+  //       html: `
+  //       <html>
+  //           <head>
+  //               <style>
+  //                   body {
+  //                       font-family: Arial, sans-serif;
+  //                       background-color: #f5f5f5;
+  //                       padding: 20px;
+  //                   }
+  //                   .container {
+  //                       background-color: #fff;
+  //                       border-radius: 8px;
+  //                       padding: 20px;
+  //                       box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  //                   }
+  //                   h1 {
+  //                       color: #333;
+  //                   }
+  //                   .invitation-link {
+  //                       margin-top: 20px;
+  //                   }
+  //                   .invitation-link a {
+  //                       color: #007bff;
+  //                       text-decoration: none;
+  //                       font-weight: bold;
+  //                   }
+  //               </style>
+  //           </head>
+  //           <body>
+  //               <div class="container">
+  //                   <h1>¡Hola, ${fullname}!</h1>
+  //                   <p>Has sido invitado al proyecto <b>${projectName}</b>.</p>
+  //                   <p>Para ingresar al proyecto, haz clic en el siguiente enlace:</p>
+  //                   <p class="invitation-link"><a href="${invitationLink}">Ingresar al proyecto</a></p>
+  //               </div>
+  //           </body>
+  //       </html>
+  //       `,
+  //     };
 
-      await this.transporter.sendMail(mailOptions);
-    }
-  }
+  //     await this.transporter.sendMail(mailOptions);
+  //   }
+  // }
 
   async sendInvitationEmail(
     to: string,

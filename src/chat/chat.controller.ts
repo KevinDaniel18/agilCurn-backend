@@ -18,6 +18,15 @@ export class ChatController {
   }
 
   @UseGuards(JwtAuthGuard)
+  @Post('sendMessage')
+  async sendMessage(
+    @Body() body: { from: number; to: number; message: string },
+  ) {
+    const { from, to, message } = body;
+    return this.chatService.saveMessage(from, to, message);
+  }
+
+  @UseGuards(JwtAuthGuard)
   @Post('deleteMessages')
   async deleteMessages(
     @Body('userId') userId: number,
