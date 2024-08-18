@@ -48,7 +48,7 @@ export class ProjectsService {
     });
 
     if (user) {
-      const confirmationLink = `https://agilcurn-backend.onrender.com/projects/confirm-invitation/${invitation.id}`;
+      const confirmationLink = `${process.env.URL_PRODUCTION}/projects/confirm-invitation/${invitation.id}`;
       await this.mailService.sendInvitationEmail(user.email, confirmationLink);
     }
 

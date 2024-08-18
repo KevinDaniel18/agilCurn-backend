@@ -65,7 +65,7 @@ export class TasksService {
     if (!isInvited) {
       throw new ForbiddenException('You are not invited to this project.');
     }
-    
+
     return this.prisma.task.findMany({
       where: { projectId },
       include: { creator: true, project: true },
@@ -96,7 +96,6 @@ export class TasksService {
       include: { creator: true, project: true },
     });
   }
-  
 
   async updateTaskStatus(
     taskId: number,
@@ -113,7 +112,11 @@ export class TasksService {
         throw new NotFoundException('Task not found');
       }
 
-      if (task.creatorId !== userId && task.project.creatorId !== userId) {
+      if (
+        task.creatorId !== userId &&
+        task.project.creatorId !== userId &&
+        task.assigneeId !== userId
+      ) {
         throw new ForbiddenException(
           'You are not authorized to update this task',
         );

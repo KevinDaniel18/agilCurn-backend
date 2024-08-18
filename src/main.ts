@@ -12,7 +12,6 @@ async function bootstrap() {
       'http://192.168.1.17:3000',
       'http://localhost:8081',
       'http://192.168.1.17:8081',
-      'https://dc89-161-10-53-79.ngrok-free.app',
     ],
     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
     allowedHeaders: 'Content-Type, Authorization',
