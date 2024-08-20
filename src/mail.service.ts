@@ -9,7 +9,7 @@ export class MailService {
     this.transporter = nodemailer.createTransport({
       service: 'Gmail',
       auth: {
-        user: 'kevnsc18@gmail.com',
+        user: 'agilcurn@gmail.com',
         pass: process.env.MAIL_SECRET,
       },
     });
@@ -17,7 +17,7 @@ export class MailService {
 
   async welcomeEmail(email: string, fullname: string): Promise<void> {
     const mailOptions = {
-      from: 'kevnsc18@gmail.com',
+      from: 'agilcurn@gmail.com',
       to: email,
       subject: 'Welcome to agilCurn',
       html: `
@@ -59,7 +59,7 @@ export class MailService {
   ): Promise<void> {
     const resetLink = `https://new-password-agil-curn.vercel.app/reset-password?token=${resetToken}`;
     const mailOptions = {
-      from: 'kevnsc18@gmail.com',
+      from: 'agilcurn@gmail.com',
       to: email,
       subject: 'Password Recovery',
       html: `
@@ -114,7 +114,7 @@ export class MailService {
   //       email,
   //     )}&name=${encodeURIComponent(fullname)}`;
   //     const mailOptions = {
-  //       from: 'kevnsc18@gmail.com',
+  //       from: 'agilcurn@gmail.com',
   //       to: email,
   //       subject: `¡Hola, ${fullname}! Has sido invitado al proyecto ${projectName}`,
   //       html: `
