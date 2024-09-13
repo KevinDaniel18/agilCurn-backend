@@ -5,6 +5,7 @@ import {
   Get,
   NotFoundException,
   Param,
+  Patch,
   Post,
   Put,
 } from '@nestjs/common';
@@ -50,5 +51,5 @@ export class UserController {
   ) {
     return this.userService.updateUserProfileImage(Number(id), imageUrl);
   }
-  
+
 }

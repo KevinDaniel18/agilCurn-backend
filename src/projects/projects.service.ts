@@ -1,13 +1,21 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  Injectable,
+  InternalServerErrorException,
+  NotFoundException,
+} from '@nestjs/common';
 import { Prisma, Project, InvitationToProject, User } from '@prisma/client';
 import { MailService } from 'src/mail.service';
 import { PrismaService } from 'src/prisma.service';
+import { UserService } from 'src/user.service';
 
 @Injectable()
 export class ProjectsService {
   constructor(
     private prisma: PrismaService,
     private mailService: MailService,
+    private userService: UserService,
   ) {}
 
   async createProject(data: {
@@ -21,7 +29,7 @@ export class ProjectsService {
     }
     console.log('Creating project with creatorId:', data.creatorId);
 
-    return this.prisma.project.create({
+    const project = await this.prisma.project.create({
       data: {
         projectName: data.projectName,
         startDate: data.startDate,
@@ -33,6 +41,8 @@ export class ProjectsService {
         },
       },
     });
+
+    return project;
   }
 
   async createInvitation(data: {
@@ -48,7 +58,7 @@ export class ProjectsService {
     });
 
     if (user) {
-      const confirmationLink = `${process.env.URL_PRODUCTION}/projects/confirm-invitation/${invitation.id}`;
+      const confirmationLink = `${process.env.URL_LOCAL}/projects/confirm-invitation/${invitation.id}`;
       await this.mailService.sendInvitationEmail(user.email, confirmationLink);
     }
 
@@ -66,7 +76,52 @@ export class ProjectsService {
     projectId: number,
     userId: number,
   ): Promise<InvitationToProject> {
-    return this.createInvitation({ projectId, invitedId: userId });
+    try {
+      const project = await this.prisma.project.findUnique({
+        where: { id: projectId },
+      });
+
+      if (!project) {
+        throw new NotFoundException('Project not found');
+      }
+
+      if (project.creatorId === userId) {
+        throw new BadRequestException(
+          'You cannot invite yourself to your own project',
+        );
+      }
+
+      const existingInvitation =
+        await this.prisma.invitationToProject.findFirst({
+          where: {
+            projectId,
+            invitedId: userId,
+            confirmed: true,
+          },
+        });
+
+      if (existingInvitation) {
+        throw new ConflictException(
+          'The user is already invited or has confirmed the invitation',
+        );
+      }
+
+      const userExists = await this.prisma.user.findUnique({
+        where: { id: userId },
+      });
+
+      if (!userExists) {
+        throw new NotFoundException('User not found');
+      }
+      return this.createInvitation({ projectId, invitedId: userId });
+    } catch (error) {
+      console.error('Error in InviteUserToProject', error);
+      throw error instanceof ConflictException ||
+        error instanceof NotFoundException ||
+        error instanceof BadRequestException
+        ? error
+        : new InternalServerErrorException('An unexpected error occurred.');
+    }
   }
 
   async confirmInvitation(id: number): Promise<Project> {

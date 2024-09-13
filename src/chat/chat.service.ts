@@ -18,6 +18,14 @@ export class ChatService {
         toId,
         message,
       },
+      select: {
+        id: true,
+        createdAt: true,
+        message: true,
+        fromId: true,
+        toId: true,
+        deletedBy: true,
+      },
     });
   }
 
@@ -38,27 +46,15 @@ export class ChatService {
   }
 
   async deleteMessages(userId: number, contactId: number) {
-    await this.prisma.message.updateMany({
+    await this.prisma.message.deleteMany({
       where: {
-        fromId: userId,
-        toId: contactId,
-      },
-      data: {
-        deletedBy: userId,
+        OR: [
+          { fromId: userId, toId: contactId },
+          { fromId: contactId, toId: userId },
+        ],
       },
     });
-
-    // Actualiza los mensajes recibidos por el usuario
-    await this.prisma.message.updateMany({
-      where: {
-        fromId: contactId,
-        toId: userId,
-      },
-      data: {
-        deletedBy: userId,
-      },
-    });
-
     return { message: 'Messages deleted successfully' };
   }
+  
 }

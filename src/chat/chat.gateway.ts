@@ -10,6 +10,7 @@ import {
 import { Server, Socket } from 'socket.io';
 import { JwtService } from '@nestjs/jwt';
 import { ChatService } from './chat.service';
+import { PrismaService } from 'src/prisma.service';
 
 interface ChatMessage {
   to: number;
@@ -40,10 +41,10 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
     try {
       const decoded = this.jwtService.verify(token);
       console.log(decoded);
-      
+
       client.data.user = decoded;
       this.users.set(decoded.id, client);
-      console.log('Client connected:', decoded);
+      this.server.emit('userStatus', { id: decoded.id, status: 'online' });
     } catch (e) {
       console.log('Unauthorized client');
       client.disconnect();
@@ -54,8 +55,13 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
     const user = client.data.user;
     if (user) {
       this.users.delete(user.id);
+      this.server.emit('userStatus', { id: user.id, status: 'offline' });
+      console.log('Client disconnected:', client.id);
     }
-    console.log('Client disconnected:', client.id);
+  }
+
+  notifyTaskUpdate(task: any) {
+    this.server.emit('taskUpdated', task);
   }
 
   @SubscribeMessage('sendMessage')
@@ -67,15 +73,18 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
     const targetSocket = this.users.get(chatMessage.to);
     try {
       const sender = await this.chatService.findUserById(user.id);
-      await this.chatService.saveMessage(
+      const savedMessage = await this.chatService.saveMessage(
         user.id,
         chatMessage.to,
         chatMessage.message,
       );
+      console.log('Mensaje guardado:', savedMessage);
+
       if (targetSocket) {
         targetSocket.emit('receiveMessage', {
           from: sender.fullname,
           message: chatMessage.message,
+          createdAt: savedMessage.createdAt,
         });
       }
       client.emit('messageStatus', {

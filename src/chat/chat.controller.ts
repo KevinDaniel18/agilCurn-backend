@@ -1,10 +1,22 @@
-import { Body, Controller, Get, Post, Query, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  NotFoundException,
+  Post,
+  Query,
+  UseGuards,
+} from '@nestjs/common';
 import { ChatService } from './chat.service';
 import { JwtAuthGuard } from 'src/authentication/auth.guard';
+import { PrismaService } from 'src/prisma.service';
 
 @Controller('chat')
 export class ChatController {
-  constructor(private readonly chatService: ChatService) {}
+  constructor(
+    private readonly chatService: ChatService,
+    private readonly prisma: PrismaService,
+  ) {}
 
   @UseGuards(JwtAuthGuard)
   @Get('messages')
@@ -33,5 +45,20 @@ export class ChatController {
     @Body('contactId') contactId: number,
   ) {
     return this.chatService.deleteMessages(userId, contactId);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Get('user/status')
+  async getUserStatus(@Query('userId') userId: string) {
+    const user = await this.prisma.user.findUnique({
+      where: { id: parseInt(userId, 10) },
+      select: { id: true, isOnline: true },
+    });
+
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    return user;
   }
 }
