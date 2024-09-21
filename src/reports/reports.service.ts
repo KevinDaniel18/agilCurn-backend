@@ -34,7 +34,6 @@ export class ReportsService {
   async getTeamProductivity(startDate: Date, endDate: Date): Promise<any> {
     const tasks = await this.prisma.task.findMany({
       where: {
-        status: 'DONE',
         updatedAt: {
           gte: startDate,
           lte: endDate,
@@ -44,20 +43,23 @@ export class ReportsService {
     });
 
     const productivity = tasks.reduce((acc, task) => {
-      if (task.assignee) {
-        acc[task.assignee.id] = acc[task.assignee.id] || {
-          userId: task.assignee.id,
-          userName: task.assignee.fullname,
+      const user = task.assignee || task.creator;
+      if (user) {
+        acc[user.id] = acc[user.id] || {
+          userId: user.id,
+          userName: user.fullname,
           completedTasks: 0,
+          inProgressTasks: 0,
+          incompleteTasks: 0,
         };
-        acc[task.assignee.id].completedTasks += 1;
-      } else {
-        acc[task.creator.id] = acc[task.creator.id] || {
-          userId: task.creator.id,
-          userName: task.creator.fullname,
-          completedTasks: 0,
-        };
-        acc[task.creator.id].completedTasks += 1;
+
+        if (task.status === 'DONE') {
+          acc[user.id].completedTasks += 1;
+        } else if (task.status === 'IN_PROGRESS') {
+          acc[user.id].inProgressTasks += 1;
+        } else {
+          acc[user.id].incompleteTasks += 1;
+        }
       }
       return acc;
     }, {});
@@ -66,9 +68,9 @@ export class ReportsService {
   }
 
   async getBottlenecks(): Promise<any> {
-    const bottleneckThreshold = 1; // Days considered as a bottleneck
+    const bottleneckThreshold = 7;
     const tasks = await this.prisma.task.findMany({
-      where: { status: 'IN_PROGRESS' },
+      where: { status: { in: ['IN_PROGRESS', 'TODO'] } },
       include: { project: true },
     });
 

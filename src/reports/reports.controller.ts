@@ -15,7 +15,6 @@ export class ReportsController {
     @Query('startDate') startDate: string,
     @Query('endDate') endDate: string,
   ): Promise<any> {
-    console.log('Received startDate:', startDate, 'endDate:', endDate);
     const start = new Date(startDate);
     const end = new Date(endDate);
     return this.reportsService.getTeamProductivity(start, end);

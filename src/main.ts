@@ -7,11 +7,10 @@ async function bootstrap() {
   const corsOptions: CorsOptions = {
     origin: [
       process.env.URL_PRODUCTION,
+      process.env.URL_LOCAL,
       'https://new-password-agil-curn.vercel.app',
-      'http://192.168.1.17:5173',
-      'http://192.168.1.17:3000',
       'http://localhost:8081',
-      'http://192.168.1.22:8081',
+      'http://192.168.1.3:8081',
     ],
     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
     allowedHeaders: 'Content-Type, Authorization',
