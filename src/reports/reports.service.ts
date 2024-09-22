@@ -82,7 +82,7 @@ export class ReportsService {
   }
 
   async getBottlenecks(): Promise<any> {
-    const bottleneckThreshold = 7;
+    const bottleneckThreshold = 1;
     const tasks = await this.prisma.task.findMany({
       where: { status: { in: ['IN_PROGRESS', 'TODO'] } },
       include: { project: true, assignee: true, creator: true },
