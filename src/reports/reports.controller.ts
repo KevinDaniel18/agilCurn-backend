@@ -1,5 +1,6 @@
-import { Controller, Get, Query } from '@nestjs/common';
+import { Controller, Get, Query, UseGuards } from '@nestjs/common';
 import { ReportsService } from './reports.service';
+import { JwtAuthGuard } from 'src/authentication/auth.guard';
 
 @Controller('reports')
 export class ReportsController {
@@ -21,6 +22,7 @@ export class ReportsController {
   }
 
   @Get('bottlenecks')
+  @UseGuards(JwtAuthGuard)
   async getBottlenecks(): Promise<any> {
     return this.reportsService.getBottlenecks();
   }

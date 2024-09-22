@@ -58,7 +58,7 @@ export class ProjectsService {
     });
 
     if (user) {
-      const confirmationLink = `${process.env.URL_PRODUCTION}/projects/confirm-invitation/${invitation.id}`;
+      const confirmationLink = `${process.env.URL_LOCAL}/projects/confirm-invitation/${invitation.id}`;
       await this.mailService.sendInvitationEmail(user.email, confirmationLink);
     }
 

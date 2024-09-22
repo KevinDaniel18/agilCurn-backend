@@ -73,6 +73,7 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
     const targetSocket = this.users.get(chatMessage.to);
     try {
       const sender = await this.chatService.findUserById(user.id);
+      const recipient = await this.chatService.findUserById(chatMessage.to);
       const savedMessage = await this.chatService.saveMessage(
         user.id,
         chatMessage.to,
@@ -86,6 +87,12 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
           message: chatMessage.message,
           createdAt: savedMessage.createdAt,
         });
+      } else if (recipient?.expoPushToken) {
+        await this.chatService.sendPushNotification(
+          recipient.expoPushToken,
+          sender.fullname,
+          chatMessage.message,
+        );
       }
       client.emit('messageStatus', {
         status: 'sent',

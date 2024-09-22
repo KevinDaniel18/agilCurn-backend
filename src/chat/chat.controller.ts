@@ -5,6 +5,7 @@ import {
   NotFoundException,
   Post,
   Query,
+  Req,
   UseGuards,
 } from '@nestjs/common';
 import { ChatService } from './chat.service';
@@ -60,5 +61,15 @@ export class ChatController {
     }
 
     return user;
+  }
+
+  @Post('save-token')
+  @UseGuards(JwtAuthGuard)
+  async saveToken(@Body() body: { token: string }, @Req() req: any) {
+    const userId = req.user.id;
+    return this.prisma.user.update({
+      where: { id: userId },
+      data: { expoPushToken: body.token },
+    });
   }
 }

@@ -28,6 +28,7 @@ model User {
   tasks            Task[]                @relation("TaskCreator")
   profileImage     String?
   isOnline         Boolean               @default(false)
+  expoPushToken    String?
 }
 
 model Message {
