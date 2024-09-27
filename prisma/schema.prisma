@@ -29,6 +29,7 @@ model User {
   profileImage     String?
   isOnline         Boolean               @default(false)
   expoPushToken    String?
+  ProjectDocument  ProjectDocument[]
 }
 
 model Message {
@@ -51,6 +52,18 @@ model Project {
   creatorId   Int
   creator     User                  @relation("CreatedProjects", fields: [creatorId], references: [id])
   tasks       Task[]                @relation("ProjectTasks")
+  documents   ProjectDocument[]     @relation("ProjectDocuments")
+}
+
+model ProjectDocument {
+  id         Int      @id @default(autoincrement())
+  fileName   String
+  fileUrl    String
+  uploadedAt DateTime @default(now())
+  projectId  Int
+  project    Project  @relation("ProjectDocuments", fields: [projectId], references: [id])
+  uploaderId Int 
+  uploader   User     @relation(fields: [uploaderId], references: [id]) 
 }
 
 model InvitationToProject {

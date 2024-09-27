@@ -72,8 +72,8 @@ export class TasksController {
     return this.tasksService.updateTaskStatus(taskId, status, userId);
   }
 
-  @UseGuards(JwtAuthGuard)
   @Patch(':id/assign')
+  @UseGuards(JwtAuthGuard)
   async assignTask(
     @Param('id', ParseIntPipe) taskId: number,
     @Body('userId', ParseIntPipe) userId: number,

@@ -62,6 +62,7 @@ export class ReportsService {
         acc[user.id] = acc[user.id] || {
           userId: user.id,
           userName: user.fullname,
+          profileImage: user.profileImage,
           completedTasks: 0,
           inProgressTasks: 0,
           incompleteTasks: 0,
@@ -82,7 +83,7 @@ export class ReportsService {
   }
 
   async getBottlenecks(): Promise<any> {
-    const bottleneckThreshold = 1;
+    const bottleneckThreshold = 7;
     const tasks = await this.prisma.task.findMany({
       where: { status: { in: ['IN_PROGRESS', 'TODO'] } },
       include: { project: true, assignee: true, creator: true },
@@ -112,7 +113,8 @@ export class ReportsService {
         'Tienes varios bottlenecks',
       );
       console.log('Nuevo bottleneck');
-    }else{}
+    } else {
+    }
 
     return bottlenecks.map((task) => ({
       taskId: task.id,

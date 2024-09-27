@@ -5,10 +5,14 @@ import {
 } from '@nestjs/common';
 import { Task, TaskStatus } from '@prisma/client';
 import { PrismaService } from 'src/prisma.service';
+import { Expo } from 'expo-server-sdk';
 
 @Injectable()
 export class TasksService {
-  constructor(private prisma: PrismaService) {}
+  private expo: Expo;
+  constructor(private prisma: PrismaService) {
+    this.expo = new Expo();
+  }
 
   private async isUserInvitedToProject(
     projectId: number,
@@ -68,7 +72,7 @@ export class TasksService {
 
     return this.prisma.task.findMany({
       where: { projectId },
-      include: { creator: true, project: true },
+      include: { creator: true, project: true, assignee: true },
     });
   }
 
@@ -135,7 +139,7 @@ export class TasksService {
   async deleteTask(taskId: number, userId: number): Promise<void> {
     const task = await this.prisma.task.findUnique({
       where: { id: taskId },
-      include: { project: true, creator: true },
+      include: { project: true },
     });
 
     if (!task) {
@@ -160,7 +164,7 @@ export class TasksService {
   ): Promise<Task> {
     const task = await this.prisma.task.findUnique({
       where: { id: taskId },
-      include: { project: true },
+      include: { project: true, creator: true, assignee: true },
     });
 
     if (!task) {
@@ -171,9 +175,62 @@ export class TasksService {
       throw new ForbiddenException('Only the project creator can assign tasks');
     }
 
-    return this.prisma.task.update({
+    const updateTask = await this.prisma.task.update({
       where: { id: taskId },
       data: { assigneeId: userId },
     });
+
+    const recipientToken = task.assignee?.expoPushToken;
+    const creatorToken = task.creator?.expoPushToken;
+
+    if (recipientToken) {
+      await this.sendPushNotification(
+        recipientToken,
+        'Task Assigned',
+        `You have been assigned the task "${updateTask.title}" in the project "${task.project.projectName}".`,
+      );
+    }
+
+    if (creatorToken) {
+      await this.sendPushNotification(
+        creatorToken,
+        'Task Assignment',
+        `You have assigned the task "${updateTask.title}" to ${task.assignee?.fullname || 'a user'}.`,
+      );
+    }
+
+    return updateTask;
+  }
+
+  async sendPushNotification(token: string, title: string, body: string) {
+    if (!Expo.isExpoPushToken(token)) {
+      console.error(`Push token ${token} is not a valid Expo push token`);
+      return;
+    }
+
+    let messages = [];
+
+    messages.push({
+      to: token,
+      sound: 'default',
+      title: title,
+      body: body,
+      data: { withSome: 'data' },
+    });
+
+    console.log('Messages to be sent:', messages);
+
+    let chunks = this.expo.chunkPushNotifications(messages);
+    let tickets = [];
+
+    for (let chunk of chunks) {
+      try {
+        let ticketChunk = await this.expo.sendPushNotificationsAsync(chunk);
+        console.log(ticketChunk);
+        tickets.push(...ticketChunk);
+      } catch (error) {
+        console.error(error);
+      }
+    }
   }
 }

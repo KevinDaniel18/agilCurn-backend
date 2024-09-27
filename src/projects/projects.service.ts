@@ -5,7 +5,13 @@ import {
   InternalServerErrorException,
   NotFoundException,
 } from '@nestjs/common';
-import { Prisma, Project, InvitationToProject, User } from '@prisma/client';
+import {
+  Prisma,
+  Project,
+  InvitationToProject,
+  User,
+  ProjectDocument,
+} from '@prisma/client';
 import { MailService } from 'src/mail.service';
 import { PrismaService } from 'src/prisma.service';
 import { UserService } from 'src/user.service';
@@ -58,7 +64,7 @@ export class ProjectsService {
     });
 
     if (user) {
-      const confirmationLink = `${process.env.URL_PRODUCTION}/projects/confirm-invitation/${invitation.id}`;
+      const confirmationLink = `${process.env.URL_LOCAL}/projects/confirm-invitation/${invitation.id}`;
       await this.mailService.sendInvitationEmail(user.email, confirmationLink);
     }
 
@@ -227,5 +233,58 @@ export class ProjectsService {
       project.creator,
       ...invitations.map((invitation) => invitation.invited),
     ];
+  }
+
+  async uploadDocument(
+    projectId: number,
+    file: Express.Multer.File,
+    uploaderId: number,
+  ): Promise<ProjectDocument> {
+    const fileUrl = `/uploads/${file.filename}`;
+    return this.prisma.projectDocument.create({
+      data: {
+        fileName: file.originalname,
+        fileUrl,
+        project: { connect: { id: projectId } },
+        uploader: { connect: { id: uploaderId } },
+      },
+    });
+  }
+
+  async getProjectDocuments(projectId: number): Promise<ProjectDocument[]> {
+    return this.prisma.projectDocument.findMany({
+      where: { projectId },
+      include: {
+        uploader: { select: { id: true, fullname: true, profileImage: true } },
+      },
+    });
+  }
+
+  async deleteDocument(
+    userId: number,
+    projectId: number,
+    documentId: number,
+  ): Promise<void> {
+    const document = await this.prisma.projectDocument.findUnique({
+      where: { id: documentId, projectId: projectId },
+      include: { project: true, uploader: true },
+    });
+
+    if (!document) {
+      throw new Error('Document not found');
+    }
+
+    const isCreator = document.project.creatorId === userId;
+    const isUploader = document.uploaderId === userId;
+
+    // Verificar si el usuario es el creador del proyecto o el uploader del documento
+    if (!isCreator && !isUploader) {
+      throw new Error('You are not authorized to delete this document');
+    }
+
+    // Si pasa las validaciones, eliminar el documento
+    await this.prisma.projectDocument.delete({
+      where: { id: documentId },
+    });
   }
 }
