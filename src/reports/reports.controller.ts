@@ -13,12 +13,13 @@ export class ReportsController {
 
   @Get('teamProductivity')
   async getTeamProductivity(
+    @Query('projectId') projectId: number,
     @Query('startDate') startDate: string,
     @Query('endDate') endDate: string,
   ): Promise<any> {
     const start = new Date(startDate);
     const end = new Date(endDate);
-    return this.reportsService.getTeamProductivity(start, end);
+    return this.reportsService.getTeamProductivity(Number(projectId), start, end);
   }
 
   @Get('bottlenecks')

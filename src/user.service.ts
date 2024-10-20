@@ -89,6 +89,7 @@ export class UserService {
             tasks: true,
           },
         },
+        roles: true
       },
     });
 

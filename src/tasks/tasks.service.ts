@@ -1,11 +1,13 @@
 import {
   ForbiddenException,
   Injectable,
+  InternalServerErrorException,
   NotFoundException,
 } from '@nestjs/common';
-import { Task, TaskStatus } from '@prisma/client';
+import { Sprint, Task, TaskStatus } from '@prisma/client';
 import { PrismaService } from 'src/prisma.service';
 import { Expo } from 'expo-server-sdk';
+import * as moment from 'moment';
 
 @Injectable()
 export class TasksService {
@@ -36,31 +38,131 @@ export class TasksService {
     projectId: number;
     assigneeId?: number;
     creatorId: number;
+    sprintId?: number;
   }): Promise<Task> {
-    console.log('Data received for creating task:', data);
+    try {
+      console.log('Data received for creating task:', data);
 
-    const isInvited = await this.isUserInvitedToProject(
-      data.projectId,
-      data.creatorId,
-    );
+      const projectExists = await this.prisma.project.findUnique({
+        where: { id: data.projectId },
+      });
 
-    if (!isInvited) {
-      throw new ForbiddenException('You are not invited to this project.');
-    }
+      if (!projectExists) {
+        throw new NotFoundException('Project not found.');
+      }
 
-    return await this.prisma.task.create({
-      data: {
-        title: data.title,
-        description: data.description,
-        project: {
-          connect: { id: data.projectId },
+      const isInvited = await this.isUserInvitedToProject(
+        data.projectId,
+        data.creatorId,
+      );
+
+      if (!isInvited) {
+        throw new ForbiddenException('You are not invited to this project.');
+      }
+
+      const userRole = await this.prisma.userRole.findFirst({
+        where: {
+          userId: data.creatorId,
+          projectId: data.projectId,
         },
-        assignee: data.assigneeId
-          ? { connect: { id: data.assigneeId } }
-          : undefined,
-        creator: { connect: { id: data.creatorId } },
-      },
-    });
+        include: { role: true },
+      });
+
+      if (userRole.role.roleName === 'Developer') {
+        if (data.assigneeId) {
+          throw new ForbiddenException(
+            'Developers cannot assign tasks to others.',
+          );
+        }
+
+        if (data.sprintId) {
+          throw new ForbiddenException(
+            'Developers cannot assign tasks to sprints.',
+          );
+        }
+      } else if (
+        userRole.role.roleName !== 'Product Owner' &&
+        userRole.role.roleName !== 'Scrum Master'
+      ) {
+        throw new ForbiddenException(
+          'You do not have permission to create tasks.',
+        );
+      }
+
+      if (data.sprintId) {
+        const sprint = await this.prisma.sprint.findUnique({
+          where: { id: data.sprintId },
+        });
+
+        if (!sprint || sprint.projectId !== data.projectId) {
+          throw new ForbiddenException(
+            'The selected sprint does not belong to this project.',
+          );
+        }
+
+        const isSprintOver = moment().isAfter(moment(sprint.endDate));
+        if (isSprintOver) {
+          throw new ForbiddenException(
+            'You cannot assign tasks to a finished sprint.',
+          );
+        }
+      }
+
+      if (data.assigneeId) {
+        const assigneeExists = await this.prisma.user.findUnique({
+          where: { id: data.assigneeId },
+        });
+
+        if (!assigneeExists) {
+          throw new NotFoundException('Assignee not found.');
+        }
+      }
+
+      const task = await this.prisma.task.create({
+        data: {
+          title: data.title,
+          description: data.description,
+          project: {
+            connect: { id: data.projectId },
+          },
+          sprint: data.sprintId
+            ? { connect: { id: data.sprintId } }
+            : undefined,
+          assignee: data.assigneeId
+            ? { connect: { id: data.assigneeId } }
+            : undefined,
+          creator: { connect: { id: data.creatorId } },
+        },
+      });
+
+      const project = await this.prisma.project.findUnique({
+        where: { id: data.projectId },
+        select: { projectName: true },
+      });
+
+      if (data.assigneeId) {
+        const assignee = await this.prisma.user.findUnique({
+          where: { id: data.assigneeId },
+          select: { expoPushToken: true },
+        });
+
+        if (assignee?.expoPushToken) {
+          await this.sendPushNotification(
+            assignee.expoPushToken,
+            'New Task Assigned',
+            `You have been assigned a new task: ${data.title}, to the project: ${project?.projectName}.`,
+          );
+        }
+      }
+
+      return task;
+    } catch (error) {
+      console.log('error creating task', error);
+      throw error instanceof ForbiddenException ||
+        error instanceof NotFoundException
+        ? error
+        : new InternalServerErrorException('An unexpected error occurred.');
+    }
   }
 
   async getProjectTasks(projectId: number, userId: number): Promise<Task[]> {
@@ -72,7 +174,12 @@ export class TasksService {
 
     return this.prisma.task.findMany({
       where: { projectId },
-      include: { creator: true, project: true, assignee: true },
+      include: {
+        creator: true,
+        project: { include: { userRoles: true } },
+        assignee: true,
+        sprint: true,
+      },
     });
   }
 
@@ -97,7 +204,10 @@ export class TasksService {
           },
         ],
       },
-      include: { creator: true, project: true },
+      include: {
+        creator: { include: { roles: { include: { role: true } } } },
+        project: { include: { userRoles: true } },
+      },
     });
   }
 
@@ -109,27 +219,54 @@ export class TasksService {
     try {
       const task = await this.prisma.task.findUnique({
         where: { id: taskId },
-        include: { project: true, creator: true },
+        include: {
+          project: { include: { userRoles: { include: { role: true } } } },
+          creator: true,
+          assignee: true,
+          sprint: true,
+        },
       });
 
       if (!task) {
         throw new NotFoundException('Task not found');
       }
 
-      if (
-        task.creatorId !== userId &&
-        task.project.creatorId !== userId &&
-        task.assigneeId !== userId
-      ) {
+      if (task.sprintId && task.sprint.endDate < new Date()) {
         throw new ForbiddenException(
-          'You are not authorized to update this task',
+          'Cannot change the status of a task in a completed sprint.',
         );
       }
 
-      return await this.prisma.task.update({
-        where: { id: taskId },
-        data: { status },
-      });
+      const userRole = task.project.userRoles.find(
+        (userRole) => userRole.userId === userId,
+      );
+
+      if (!userRole) {
+        throw new ForbiddenException('You are not part of this project');
+      }
+
+      const roleName = userRole.role.roleName;
+
+      if (roleName === 'Product Owner' || roleName === 'Scrum Master') {
+        return await this.prisma.task.update({
+          where: { id: taskId },
+          data: { status },
+        });
+      }
+
+      if (
+        roleName === 'Developer' &&
+        (task.creatorId === userId || task.assigneeId === userId)
+      ) {
+        return await this.prisma.task.update({
+          where: { id: taskId },
+          data: { status },
+        });
+      }
+
+      throw new ForbiddenException(
+        'You are not authorized to update this task',
+      );
     } catch (error) {
       console.error('Error updating task status:', error);
       throw error;
@@ -139,67 +276,299 @@ export class TasksService {
   async deleteTask(taskId: number, userId: number): Promise<void> {
     const task = await this.prisma.task.findUnique({
       where: { id: taskId },
-      include: { project: true },
+      include: {
+        project: { include: { userRoles: { include: { role: true } } } },
+        creator: true,
+      },
     });
 
     if (!task) {
       throw new Error('Task not found');
     }
 
-    if (task.project.creatorId !== userId && task.creatorId !== userId) {
-      throw new ForbiddenException(
-        'You are not authorized to delete this task',
-      );
+    const userRole = task.project.userRoles.find(
+      (userRole) => userRole.userId === userId,
+    );
+
+    if (!userRole) {
+      throw new ForbiddenException('You are not part of this project');
     }
 
-    await this.prisma.task.delete({
-      where: { id: taskId },
+    const roleName = userRole.role.roleName;
+
+    if (roleName === 'Product Owner') {
+      await this.prisma.task.delete({
+        where: { id: taskId },
+      });
+      return;
+    }
+
+    if (
+      roleName === 'Developer' ||
+      (roleName === 'Scrum Master' &&
+        (task.creatorId === userId || task.assigneeId === userId))
+    ) {
+      await this.prisma.task.delete({
+        where: { id: taskId },
+      });
+      return;
+    }
+
+    throw new ForbiddenException('You are not authorized to delete this task');
+  }
+
+  async createSprint(data: {
+    sprintName: string;
+    startDate: Date;
+    endDate: Date;
+    projectId: number;
+    creatorId: number;
+  }): Promise<Sprint> {
+    try {
+      const isInvited = await this.isUserInvitedToProject(
+        data.projectId,
+        data.creatorId,
+      );
+
+      if (!isInvited) {
+        throw new ForbiddenException('You are not invited to this project.');
+      }
+
+      const userRole = await this.prisma.userRole.findFirst({
+        where: { userId: data.creatorId, projectId: data.projectId },
+        include: { role: true },
+      });
+
+      if (
+        userRole.role.roleName !== 'Product Owner' &&
+        userRole.role.roleName !== 'Scrum Master'
+      ) {
+        throw new ForbiddenException(
+          'You do not have permission to create sprints.',
+        );
+      }
+
+      const project = await this.prisma.project.findUnique({
+        where: { id: data.projectId },
+      });
+
+      if (!project) {
+        throw new NotFoundException('Project not found.');
+      }
+
+      if (data.endDate > project.endDate) {
+        throw new ForbiddenException(
+          'The end date of the sprint cannot be greater than the end date of the project.',
+        );
+      }
+
+      return this.prisma.sprint.create({
+        data: {
+          sprintName: data.sprintName,
+          startDate: data.startDate,
+          endDate: data.endDate,
+          project: { connect: { id: data.projectId } },
+        },
+      });
+    } catch (error) {
+      console.error('Error in creating sprint', error);
+      throw error instanceof ForbiddenException ||
+        error instanceof NotFoundException
+        ? error
+        : new InternalServerErrorException('An unexpected error occurred.');
+    }
+  }
+
+  async getSprintsByProjectId(projectId: number) {
+    return this.prisma.sprint.findMany({
+      where: { projectId },
+      orderBy: { startDate: 'asc' },
+      include: {
+        tasks: {
+          select: {
+            id: true,
+            title: true,
+            description: true,
+            assigneeId: true,
+            creatorId: true,
+          },
+        },
+      },
     });
   }
 
-  async assignTask(
+  async assignTaskToSprint(
     taskId: number,
+    sprintId: number,
     userId: number,
-    assignerId: number,
   ): Promise<Task> {
-    const task = await this.prisma.task.findUnique({
-      where: { id: taskId },
-      include: { project: true, creator: true, assignee: true },
-    });
+    try {
+      const task = await this.prisma.task.findUnique({
+        where: { id: taskId },
+        include: { project: true },
+      });
 
-    if (!task) {
-      throw new Error('Task not found');
-    }
+      if (!task) {
+        throw new NotFoundException('Task not found.');
+      }
 
-    if (task.project.creatorId !== assignerId) {
-      throw new ForbiddenException('Only the project creator can assign tasks');
-    }
-
-    const updateTask = await this.prisma.task.update({
-      where: { id: taskId },
-      data: { assigneeId: userId },
-    });
-
-    const recipientToken = task.assignee?.expoPushToken;
-    const creatorToken = task.creator?.expoPushToken;
-
-    if (recipientToken) {
-      await this.sendPushNotification(
-        recipientToken,
-        'Task Assigned',
-        `You have been assigned the task "${updateTask.title}" in the project "${task.project.projectName}".`,
+      const isUserAuthorized = await this.isUserInvitedToProject(
+        task.projectId,
+        userId,
       );
-    }
 
-    if (creatorToken) {
-      await this.sendPushNotification(
-        creatorToken,
-        'Task Assignment',
-        `You have assigned the task "${updateTask.title}" to ${task.assignee?.fullname || 'a user'}.`,
+      if (!isUserAuthorized) {
+        throw new ForbiddenException(
+          'You are not authorized to assign tasks to this sprint.',
+        );
+      }
+
+      const userRole = await this.prisma.userRole.findFirst({
+        where: {
+          userId: userId,
+          projectId: task.projectId,
+        },
+        include: { role: true },
+      });
+
+      if (
+        userRole.role.roleName !== 'Product Owner' &&
+        userRole.role.roleName !== 'Scrum Master'
+      ) {
+        throw new ForbiddenException(
+          'You do not have permission to assign tasks to a sprint.',
+        );
+      }
+
+      const sprintExists = await this.prisma.sprint.findUnique({
+        where: { id: sprintId },
+        include: { project: true },
+      });
+
+      if (!sprintExists) {
+        throw new NotFoundException('Sprint not found.');
+      }
+
+      if (sprintExists.projectId !== task.projectId) {
+        throw new ForbiddenException(
+          'You cannot assign tasks to sprints of different projects.',
+        );
+      }
+
+      return this.prisma.task.update({
+        where: { id: taskId },
+        data: { sprintId: sprintId },
+      });
+    } catch (error) {
+      console.error('Error assing task to sprint', error);
+      throw error instanceof ForbiddenException ||
+        error instanceof NotFoundException
+        ? error
+        : new InternalServerErrorException('An unexpected error occurred.');
+    }
+  }
+
+  async removeTaskFromSprint(taskId: number, userId: number): Promise<Task> {
+    try {
+      const task = await this.prisma.task.findUnique({
+        where: { id: taskId },
+        include: { project: true },
+      });
+
+      if (!task) {
+        throw new NotFoundException('Task not found.');
+      }
+
+      const isUserAuthorized = await this.isUserInvitedToProject(
+        task.projectId,
+        userId,
       );
-    }
 
-    return updateTask;
+      if (!isUserAuthorized) {
+        throw new ForbiddenException(
+          'You are not authorized to remove tasks from this sprint.',
+        );
+      }
+
+      const userRole = await this.prisma.userRole.findFirst({
+        where: {
+          userId: userId,
+          projectId: task.projectId,
+        },
+        include: { role: true },
+      });
+
+      if (
+        userRole.role.roleName !== 'Product Owner' &&
+        userRole.role.roleName !== 'Scrum Master'
+      ) {
+        throw new ForbiddenException(
+          'You do not have permission to remove tasks from a sprint.',
+        );
+      }
+
+      return this.prisma.task.update({
+        where: { id: taskId },
+        data: { sprintId: null },
+      });
+    } catch (error) {
+      console.error('Error removing task from sprint', error);
+      throw error instanceof ForbiddenException ||
+        error instanceof NotFoundException
+        ? error
+        : new InternalServerErrorException('An unexpected error occurred.');
+    }
+  }
+
+  async deleteSprint(sprintId: number, userId: number): Promise<Sprint> {
+    try {
+      const sprint = await this.prisma.sprint.findUnique({
+        where: { id: sprintId },
+        include: { project: true },
+      });
+
+      if (!sprint) {
+        throw new NotFoundException('Sprint not found.');
+      }
+
+      const isUserAuthorized = await this.isUserInvitedToProject(
+        sprint.projectId,
+        userId,
+      );
+
+      if (!isUserAuthorized) {
+        throw new ForbiddenException(
+          'You are not authorized to delete this sprint.',
+        );
+      }
+
+      const userRole = await this.prisma.userRole.findFirst({
+        where: {
+          userId: userId,
+          projectId: sprint.projectId,
+        },
+        include: { role: true },
+      });
+
+      if (
+        userRole.role.roleName !== 'Product Owner' &&
+        userRole.role.roleName !== 'Scrum Master'
+      ) {
+        throw new ForbiddenException(
+          'You do not have permission to delete this sprint.',
+        );
+      }
+
+      return await this.prisma.sprint.delete({
+        where: { id: sprintId },
+      });
+    } catch (error) {
+      console.error('Error deleting sprint', error);
+      throw error instanceof ForbiddenException ||
+        error instanceof NotFoundException
+        ? error
+        : new InternalServerErrorException('An unexpected error occurred.');
+    }
   }
 
   async sendPushNotification(token: string, title: string, body: string) {

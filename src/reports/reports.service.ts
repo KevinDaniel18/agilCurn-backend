@@ -45,9 +45,10 @@ export class ReportsService {
     });
   }
 
-  async getTeamProductivity(startDate: Date, endDate: Date): Promise<any> {
+  async getTeamProductivity(projectId: number,startDate: Date, endDate: Date): Promise<any> {
     const tasks = await this.prisma.task.findMany({
       where: {
+        projectId,
         updatedAt: {
           gte: startDate,
           lte: endDate,

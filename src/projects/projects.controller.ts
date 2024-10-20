@@ -66,8 +66,9 @@ export class ProjectsController {
   async inviteUser(
     @Param('id', ParseIntPipe) projectId: number,
     @Body('userId', ParseIntPipe) userId: number,
+    @Body('roleId', ParseIntPipe) roleId: number,
   ): Promise<InvitationToProject> {
-    return this.projectService.inviteUserToProject(projectId, userId);
+    return this.projectService.inviteUserToProject(projectId, userId, roleId);
   }
 
   @Get('confirm-invitation/:id')
@@ -142,6 +143,18 @@ export class ProjectsController {
         console.error('Download failed', err);
         res.status(500).send('Error downloading the document');
       }
+    });
+  }
+
+  @Get(':projectId/user-roles/:userId')
+  @UseGuards(JwtAuthGuard)
+  async getUserRoles(
+    @Param('projectId') projectId: number,
+    @Param('userId') userId: number,
+  ) {
+    return await this.prisma.userRole.findMany({
+      where: { projectId, userId },
+      include: { role: true },
     });
   }
 }

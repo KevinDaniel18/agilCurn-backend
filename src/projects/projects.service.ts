@@ -48,15 +48,35 @@ export class ProjectsService {
       },
     });
 
+    await this.prisma.userRole.create({
+      data: {
+        userId: data.creatorId,
+        projectId: project.id,
+        roleId: 1,
+      },
+    });
+
     return project;
   }
 
   async createInvitation(data: {
     projectId: number;
     invitedId: number;
+    roleId: number;
   }): Promise<InvitationToProject> {
     const invitation = await this.prisma.invitationToProject.create({
-      data,
+      data: {
+        projectId: data.projectId,
+        invitedId: data.invitedId,
+      },
+    });
+
+    await this.prisma.userRole.create({
+      data: {
+        userId: data.invitedId,
+        projectId: data.projectId,
+        roleId: data.roleId,
+      },
     });
 
     const user = await this.prisma.user.findUnique({
@@ -67,6 +87,8 @@ export class ProjectsService {
       const confirmationLink = `${process.env.URL_LOCAL}/projects/confirm-invitation/${invitation.id}`;
       await this.mailService.sendInvitationEmail(user.email, confirmationLink);
     }
+
+    console.log(invitation);
 
     return invitation;
   }
@@ -81,14 +103,28 @@ export class ProjectsService {
   async inviteUserToProject(
     projectId: number,
     userId: number,
+    roleId: number,
   ): Promise<InvitationToProject> {
     try {
+      const valideRolesIds = [1, 2, 3];
+      if (!valideRolesIds.includes(roleId)) {
+        throw new BadRequestException('Invalid roleId. It must be Scrum Master, Product Owner or Developer');
+      }
+
       const project = await this.prisma.project.findUnique({
         where: { id: projectId },
       });
 
       if (!project) {
         throw new NotFoundException('Project not found');
+      }
+
+      const role = await this.prisma.role.findUnique({
+        where: { id: roleId },
+      });
+
+      if (!role) {
+        throw new NotFoundException('Role no found');
       }
 
       if (project.creatorId === userId) {
@@ -119,7 +155,7 @@ export class ProjectsService {
       if (!userExists) {
         throw new NotFoundException('User not found');
       }
-      return this.createInvitation({ projectId, invitedId: userId });
+      return this.createInvitation({ projectId, invitedId: userId, roleId });
     } catch (error) {
       console.error('Error in InviteUserToProject', error);
       throw error instanceof ConflictException ||
@@ -144,6 +180,14 @@ export class ProjectsService {
 
     return this.prisma.project.findUnique({
       where: { id: invitation.projectId },
+      include: {
+        userRoles: {
+          include: {
+            user: true,
+            role: true,
+          },
+        },
+      },
     });
   }
 
@@ -166,7 +210,23 @@ export class ProjectsService {
               },
             },
           },
+          {
+            userRoles: {
+              some: {
+                userId: userId,
+              },
+            },
+          },
         ],
+      },
+      include: {
+        userRoles: {
+          include: {
+            role: true,
+          },
+        },
+        invitations: true,
+        tasks: true,
       },
     });
   }
@@ -180,8 +240,12 @@ export class ProjectsService {
       throw new NotFoundException('Project not found');
     }
 
+    await this.prisma.userRole.deleteMany({
+      where: { projectId },
+    });
+
     await this.prisma.invitationToProject.deleteMany({
-      where: { projectId: projectId },
+      where: { projectId },
     });
 
     return this.prisma.project.delete({
@@ -205,6 +269,13 @@ export class ProjectsService {
     await this.prisma.invitationToProject.delete({
       where: { id: invitation.id },
     });
+
+    await this.prisma.userRole.deleteMany({
+      where: {
+        userId,
+        projectId,
+      },
+    });
   }
 
   async getInvitedUsers(projectId: number): Promise<User[]> {
@@ -213,15 +284,31 @@ export class ProjectsService {
         projectId: projectId,
         confirmed: true,
       },
-      select: {
-        invited: true,
+      include: {
+        invited: {
+          include: {
+            roles: {
+              include: {
+                role: true,
+              },
+            },
+          },
+        },
       },
     });
 
     const project = await this.prisma.project.findUnique({
       where: { id: projectId },
-      select: {
-        creator: true,
+      include: {
+        creator: {
+          include: {
+            roles: {
+              include: {
+                role: true,
+              },
+            },
+          },
+        },
       },
     });
 

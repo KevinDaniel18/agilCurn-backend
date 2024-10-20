@@ -30,6 +30,7 @@ model User {
   isOnline         Boolean               @default(false)
   expoPushToken    String?
   ProjectDocument  ProjectDocument[]
+  roles            UserRole[]            @relation("UserRoles")
 }
 
 model Message {
@@ -53,6 +54,26 @@ model Project {
   creator     User                  @relation("CreatedProjects", fields: [creatorId], references: [id])
   tasks       Task[]                @relation("ProjectTasks")
   documents   ProjectDocument[]     @relation("ProjectDocuments")
+  userRoles   UserRole[]            @relation("ProjectRoles")
+
+  Sprint Sprint[]
+}
+
+model Role {
+  id          Int        @id @default(autoincrement())
+  roleName    String
+  description String?
+  users       UserRole[] @relation("RoleUsers")
+}
+
+model UserRole {
+  id        Int     @id @default(autoincrement())
+  userId    Int
+  user      User    @relation("UserRoles", fields: [userId], references: [id])
+  projectId Int
+  project   Project @relation("ProjectRoles", fields: [projectId], references: [id])
+  roleId    Int
+  role      Role    @relation("RoleUsers", fields: [roleId], references: [id])
 }
 
 model ProjectDocument {
@@ -62,8 +83,8 @@ model ProjectDocument {
   uploadedAt DateTime @default(now())
   projectId  Int
   project    Project  @relation("ProjectDocuments", fields: [projectId], references: [id])
-  uploaderId Int 
-  uploader   User     @relation(fields: [uploaderId], references: [id]) 
+  uploaderId Int
+  uploader   User     @relation(fields: [uploaderId], references: [id])
 }
 
 model InvitationToProject {
@@ -76,11 +97,24 @@ model InvitationToProject {
   createdAt DateTime @default(now())
 }
 
+model Sprint {
+  id         Int      @id @default(autoincrement())
+  sprintName String
+  startDate  DateTime
+  endDate    DateTime
+  projectId  Int
+  project    Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  tasks      Task[]   @relation("SprintTasks")
+  createdAt  DateTime @default(now())
+}
+
 model Task {
   id          Int        @id @default(autoincrement())
   title       String
   description String?
   status      TaskStatus @default(TODO)
+  sprintId    Int?
+  sprint      Sprint?    @relation("SprintTasks", fields: [sprintId], references: [id])
   projectId   Int
   project     Project    @relation("ProjectTasks", fields: [projectId], references: [id], onDelete: Cascade)
   assigneeId  Int?
