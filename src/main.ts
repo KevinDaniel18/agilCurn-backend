@@ -5,7 +5,8 @@ import { RolesService } from './roles/roles.service';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
-  const rolesService = app.get(RolesService)
+  const rolesService = app.get(RolesService);
+
   const corsOptions: CorsOptions = {
     origin: [
       process.env.URL_PRODUCTION,
@@ -19,7 +20,11 @@ async function bootstrap() {
   };
 
   app.enableCors(corsOptions);
-  await rolesService.initializeRoles()
-  await app.listen(3000);
+  await rolesService.initializeRoles();
+
+  const port = process.env.PORT || 3000;
+  await app.listen(port);
+  console.log(`Application is running on: http://localhost:${port}`);
 }
 bootstrap();
+
