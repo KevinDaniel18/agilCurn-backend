@@ -65,10 +65,11 @@ export class ProjectsController {
   @Post(':id/invite')
   async inviteUser(
     @Param('id', ParseIntPipe) projectId: number,
-    @Body('userId', ParseIntPipe) userId: number,
     @Body('roleId', ParseIntPipe) roleId: number,
+    @Body('userId') userId?: string,
+    @Body('email') email?: string,
   ): Promise<InvitationToProject> {
-    return this.projectService.inviteUserToProject(projectId, userId, roleId);
+    return this.projectService.inviteUserToProject(projectId, roleId, parseInt(userId), email);
   }
 
   @Get('confirm-invitation/:id')

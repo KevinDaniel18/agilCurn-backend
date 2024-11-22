@@ -6,6 +6,7 @@ import { ProjectsModule } from './projects/projects.module';
 import { TasksModule } from './tasks/tasks.module';
 import { ReportsModule } from './reports/reports.module';
 import { ScheduleModule } from '@nestjs/schedule/dist';
+import { RolesModule } from './roles/roles.module';
 
 @Module({
   imports: [
@@ -16,6 +17,7 @@ import { ScheduleModule } from '@nestjs/schedule/dist';
     ProjectsModule,
     TasksModule,
     ReportsModule,
+    RolesModule,
     ScheduleModule.forRoot()
   ],
 })

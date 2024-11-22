@@ -61,8 +61,9 @@ export class ProjectsService {
 
   async createInvitation(data: {
     projectId: number;
-    invitedId: number;
     roleId: number;
+    invitedId?: number;
+    email?: string;
   }): Promise<InvitationToProject> {
     const invitation = await this.prisma.invitationToProject.create({
       data: {
@@ -79,13 +80,21 @@ export class ProjectsService {
       },
     });
 
-    const user = await this.prisma.user.findUnique({
-      where: { id: data.invitedId },
-    });
+    if (data.email) {
+      const confirmationLink = `${process.env.URL_PRODUCTION}/projects/confirm-invitation/${invitation.id}`;
+      await this.mailService.sendInvitationEmail(data.email, confirmationLink);
+    } else {
+      const user = await this.prisma.user.findUnique({
+        where: { id: data.invitedId },
+      });
 
-    if (user) {
-      const confirmationLink = `${process.env.URL_LOCAL}/projects/confirm-invitation/${invitation.id}`;
-      await this.mailService.sendInvitationEmail(user.email, confirmationLink);
+      if (user) {
+        const confirmationLink = `${process.env.URL_PRODUCTION}/projects/confirm-invitation/${invitation.id}`;
+        await this.mailService.sendInvitationEmail(
+          user.email,
+          confirmationLink,
+        );
+      }
     }
 
     console.log(invitation);
@@ -102,13 +111,16 @@ export class ProjectsService {
 
   async inviteUserToProject(
     projectId: number,
-    userId: number,
     roleId: number,
+    userId?: number,
+    email?: string,
   ): Promise<InvitationToProject> {
     try {
       const valideRolesIds = [1, 2, 3];
       if (!valideRolesIds.includes(roleId)) {
-        throw new BadRequestException('Invalid roleId. It must be Scrum Master, Product Owner or Developer');
+        throw new BadRequestException(
+          'Invalid roleId. It must be Scrum Master, Product Owner or Developer',
+        );
       }
 
       const project = await this.prisma.project.findUnique({
@@ -133,29 +145,49 @@ export class ProjectsService {
         );
       }
 
-      const existingInvitation =
-        await this.prisma.invitationToProject.findFirst({
-          where: {
-            projectId,
-            invitedId: userId,
-            confirmed: true,
-          },
-        });
+      let invitedId: number | null = null;
 
+      if (userId) {
+        const userExists = await this.prisma.user.findUnique({
+          where: { id: userId },
+        });
+        if (!userExists) {
+          throw new NotFoundException('User not found');
+        }
+        invitedId = userId;
+      } else if (email) {
+        const userExists = await this.prisma.user.findUnique({
+          where: { email },
+        });
+        if (!userExists) {
+          throw new NotFoundException('User not found with this email');
+        }
+        invitedId = userExists.id;
+      }
+  
+      // Comprobar si la invitación ya existe
+      const existingInvitation = await this.prisma.invitationToProject.findFirst({
+        where: {
+          projectId,
+          invitedId, // Usar el invitedId determinado
+          confirmed: true,
+        },
+      });
+  
       if (existingInvitation) {
         throw new ConflictException(
           'The user is already invited or has confirmed the invitation',
         );
       }
-
-      const userExists = await this.prisma.user.findUnique({
-        where: { id: userId },
+  
+      
+      return this.createInvitation({
+        projectId,
+        roleId,
+        invitedId,
+        email,
       });
-
-      if (!userExists) {
-        throw new NotFoundException('User not found');
-      }
-      return this.createInvitation({ projectId, invitedId: userId, roleId });
+  
     } catch (error) {
       console.error('Error in InviteUserToProject', error);
       throw error instanceof ConflictException ||

@@ -61,7 +61,7 @@ model Project {
 
 model Role {
   id          Int        @id @default(autoincrement())
-  roleName    String
+  roleName    String     @unique
   description String?
   users       UserRole[] @relation("RoleUsers")
 }
