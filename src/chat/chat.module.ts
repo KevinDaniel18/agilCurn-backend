@@ -5,6 +5,7 @@ import { ChatService } from './chat.service';
 import { PrismaService } from 'src/prisma.service';
 import { ChatController } from './chat.controller';
 import { AuthModule } from 'src/authentication/auth.module';
+import { NotificationService } from 'src/notification.service';
 
 @Module({
   imports: [
@@ -15,6 +16,6 @@ import { AuthModule } from 'src/authentication/auth.module';
     }),
   ],
   controllers: [ChatController],
-  providers: [ChatService, PrismaService, ChatGateway],
+  providers: [ChatService, PrismaService, ChatGateway, NotificationService],
 })
 export class ChatModule {}

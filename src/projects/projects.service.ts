@@ -6,7 +6,6 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import {
-  Prisma,
   Project,
   InvitationToProject,
   User,
@@ -14,14 +13,12 @@ import {
 } from '@prisma/client';
 import { MailService } from 'src/mail.service';
 import { PrismaService } from 'src/prisma.service';
-import { UserService } from 'src/user.service';
 
 @Injectable()
 export class ProjectsService {
   constructor(
     private prisma: PrismaService,
     private mailService: MailService,
-    private userService: UserService,
   ) {}
 
   async createProject(data: {
@@ -69,19 +66,12 @@ export class ProjectsService {
       data: {
         projectId: data.projectId,
         invitedId: data.invitedId,
+        confirmed: false,
       },
     });
 
-    await this.prisma.userRole.create({
-      data: {
-        userId: data.invitedId,
-        projectId: data.projectId,
-        roleId: data.roleId,
-      },
-    });
-
+    const confirmationLink = `${process.env.URL_PRODUCTION}/projects/confirm-invitation/${invitation.id}/${data.roleId}`;
     if (data.email) {
-      const confirmationLink = `${process.env.URL_PRODUCTION}/projects/confirm-invitation/${invitation.id}`;
       await this.mailService.sendInvitationEmail(data.email, confirmationLink);
     } else {
       const user = await this.prisma.user.findUnique({
@@ -89,7 +79,6 @@ export class ProjectsService {
       });
 
       if (user) {
-        const confirmationLink = `${process.env.URL_PRODUCTION}/projects/confirm-invitation/${invitation.id}`;
         await this.mailService.sendInvitationEmail(
           user.email,
           confirmationLink,
@@ -164,30 +153,29 @@ export class ProjectsService {
         }
         invitedId = userExists.id;
       }
-  
+
       // Comprobar si la invitación ya existe
-      const existingInvitation = await this.prisma.invitationToProject.findFirst({
-        where: {
-          projectId,
-          invitedId, // Usar el invitedId determinado
-          confirmed: true,
-        },
-      });
-  
+      const existingInvitation =
+        await this.prisma.invitationToProject.findFirst({
+          where: {
+            projectId,
+            invitedId, // Usar el invitedId determinado
+            confirmed: true,
+          },
+        });
+
       if (existingInvitation) {
         throw new ConflictException(
           'The user is already invited or has confirmed the invitation',
         );
       }
-  
-      
+
       return this.createInvitation({
         projectId,
         roleId,
         invitedId,
         email,
       });
-  
     } catch (error) {
       console.error('Error in InviteUserToProject', error);
       throw error instanceof ConflictException ||
@@ -198,29 +186,56 @@ export class ProjectsService {
     }
   }
 
-  async confirmInvitation(id: number): Promise<Project> {
-    await this.acceptInvitation(id);
+  async confirmInvitation(id: number, roleId: number): Promise<Project> {
+    try {
+      const invitation = await this.prisma.invitationToProject.findUnique({
+        where: { id },
+      });
 
-    const invitation = await this.prisma.invitationToProject.findUnique({
-      where: { id },
-      select: { projectId: true },
-    });
+      if (!invitation) {
+        throw new NotFoundException('Invitation not found');
+      }
 
-    if (!invitation) {
-      throw new NotFoundException('Invitation not found');
-    }
-
-    return this.prisma.project.findUnique({
-      where: { id: invitation.projectId },
-      include: {
-        userRoles: {
+      if (invitation.confirmed) {
+        // If already confirmed, just return the project info
+        return this.prisma.project.findUnique({
+          where: { id: invitation.projectId },
           include: {
-            user: true,
-            role: true,
+            userRoles: {
+              include: {
+                user: true,
+                role: true,
+              },
+            },
+          },
+        });
+      }
+      await this.acceptInvitation(id);
+
+      if (invitation.invitedId) {
+        await this.prisma.userRole.create({
+          data: {
+            userId: invitation.invitedId,
+            projectId: invitation.projectId,
+            roleId: roleId,
+          },
+        });
+      }
+
+      return this.prisma.project.findUnique({
+        where: { id: invitation.projectId },
+        include: {
+          userRoles: {
+            include: {
+              user: true,
+              role: true,
+            },
           },
         },
-      },
-    });
+      });
+    } catch (error) {
+      console.error(error);
+    }
   }
 
   async getProjects(): Promise<Project[]> {

@@ -10,7 +10,7 @@ import {
 import { Server, Socket } from 'socket.io';
 import { JwtService } from '@nestjs/jwt';
 import { ChatService } from './chat.service';
-import { PrismaService } from 'src/prisma.service';
+import { NotificationService } from 'src/notification.service';
 
 interface ChatMessage {
   to: number;
@@ -34,6 +34,7 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
   constructor(
     private readonly jwtService: JwtService,
     private readonly chatService: ChatService,
+    private readonly notificationsService: NotificationService
   ) {}
 
   async handleConnection(client: Socket) {
@@ -88,7 +89,7 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
           createdAt: savedMessage.createdAt,
         });
       } else if (recipient?.expoPushToken) {
-        await this.chatService.sendPushNotification(
+        await this.notificationsService.sendPushNotification(
           recipient.expoPushToken,
           sender.fullname,
           chatMessage.message,

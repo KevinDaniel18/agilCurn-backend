@@ -11,6 +11,8 @@ import {
   Res,
   Request,
   UseGuards,
+  DefaultValuePipe,
+  Query,
 } from '@nestjs/common';
 import { ProjectsService } from './projects.service';
 import {
@@ -69,14 +71,21 @@ export class ProjectsController {
     @Body('userId') userId?: string,
     @Body('email') email?: string,
   ): Promise<InvitationToProject> {
-    return this.projectService.inviteUserToProject(projectId, roleId, parseInt(userId), email);
+    return this.projectService.inviteUserToProject(
+      projectId,
+      roleId,
+      parseInt(userId),
+      email,
+    );
   }
 
-  @Get('confirm-invitation/:id')
+  @Get('confirm-invitation/:id/:roleId')
   async confirmInvitation(
     @Param('id', ParseIntPipe) invitationId: number,
+    @Param('roleId', ParseIntPipe) roleId: number,
   ): Promise<Project> {
-    return this.projectService.confirmInvitation(invitationId);
+    console.log('Confirm invitation endpoint hit:', invitationId, roleId);
+    return this.projectService.confirmInvitation(invitationId, roleId);
   }
 
   @Delete(':id/leave')

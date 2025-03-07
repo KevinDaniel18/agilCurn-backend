@@ -1,18 +1,16 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from 'src/prisma.service';
-import { Expo } from 'expo-server-sdk';
 import { ReportsGateway } from './reports.gateway';
 import { Cron } from '@nestjs/schedule';
+import { NotificationService } from 'src/notification.service';
 
 @Injectable()
 export class ReportsService {
-  private expo: Expo;
   constructor(
     private prisma: PrismaService,
     private notificationsGateway: ReportsGateway,
-  ) {
-    this.expo = new Expo();
-  }
+    private notificationService: NotificationService,
+  ) {}
 
   @Cron('0 0 * * 0')
   async handleCron() {
@@ -45,7 +43,11 @@ export class ReportsService {
     });
   }
 
-  async getTeamProductivity(projectId: number,startDate: Date, endDate: Date): Promise<any> {
+  async getTeamProductivity(
+    projectId: number,
+    startDate: Date,
+    endDate: Date,
+  ): Promise<any> {
     const tasks = await this.prisma.task.findMany({
       where: {
         projectId,
@@ -101,7 +103,7 @@ export class ReportsService {
       const recipientToken =
         task.assignee?.expoPushToken || task.creator?.expoPushToken;
       if (recipientToken) {
-        await this.sendPushNotification(
+        await this.notificationService.sendPushNotification(
           recipientToken,
           'Bottleneck Alert',
           `The task "${task.title}" from the project ${task.project.projectName} has been in progress for more than ${bottleneckThreshold} days.`,
@@ -127,35 +129,5 @@ export class ReportsService {
           (1000 * 60 * 60 * 24),
       ),
     }));
-  }
-
-  async sendPushNotification(token: string, title: string, body: string) {
-    if (!Expo.isExpoPushToken(token)) {
-      console.error(`Push token ${token} is not a valid Expo push token`);
-      return;
-    }
-
-    let messages = [];
-
-    messages.push({
-      to: token,
-      sound: 'default',
-      title: title,
-      body: body,
-      data: { withSome: 'data' },
-    });
-
-    let chunks = this.expo.chunkPushNotifications(messages);
-    let tickets = [];
-
-    for (let chunk of chunks) {
-      try {
-        let ticketChunk = await this.expo.sendPushNotificationsAsync(chunk);
-        console.log(ticketChunk);
-        tickets.push(...ticketChunk);
-      } catch (error) {
-        console.error(error);
-      }
-    }
   }
 }
