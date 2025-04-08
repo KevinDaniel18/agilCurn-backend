@@ -11,7 +11,6 @@ async function bootstrap() {
     origin: [
       process.env.URL_PRODUCTION,
       'https://new-password-agil-curn.vercel.app',
-      'http://localhost:8081',
       'https://invitations-ten.vercel.app',
     ],
     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
