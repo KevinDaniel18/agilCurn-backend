@@ -32,7 +32,7 @@
     "@nestjs/serve-static": "^4.0.2",
     "@nestjs/websockets": "^10.3.9",
     "@prisma/client": "^5.17.0",
-    "bcrypt": "^5.1.1",
+    "bcryptjs": "^3.0.2",
     "class-validator": "^0.14.1",
     "expo-server-sdk": "^3.11.0",
     "jsonwebtoken": "^9.0.2",

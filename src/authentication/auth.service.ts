@@ -7,7 +7,7 @@ import { JwtService } from '@nestjs/jwt';
 import { PrismaService } from 'src/prisma.service';
 import { UserService } from 'src/user.service';
 import { LoginDto } from './dto/login-user.dto';
-import * as bcrypt from 'bcrypt';
+import bcrypt from "bcryptjs";
 import { RegisterUserDto } from './dto/register-user.dto';
 import { User } from 'src/user.model';
 import { MailService } from 'src/mail.service';
