@@ -87,6 +87,7 @@ export class ReportsService {
 
   async getBottlenecks(): Promise<any> {
     const bottleneckThreshold = 7;
+    const now = new Date();
     const tasks = await this.prisma.task.findMany({
       where: { status: { in: ['IN_PROGRESS', 'TODO'] } },
       include: { project: true, assignee: true, creator: true },
@@ -96,18 +97,30 @@ export class ReportsService {
       const daysInProgress =
         (new Date().getTime() - new Date(task.updatedAt).getTime()) /
         (1000 * 60 * 60 * 24);
+
       return daysInProgress > bottleneckThreshold;
     });
 
     for (const task of bottlenecks) {
-      const recipientToken =
-        task.assignee?.expoPushToken || task.creator?.expoPushToken;
-      if (recipientToken) {
-        await this.notificationService.sendPushNotification(
-          recipientToken,
-          'Bottleneck Alert',
-          `The task "${task.title}" from the project ${task.project.projectName} has been in progress for more than ${bottleneckThreshold} days.`,
-        );
+      const isProjectOver = new Date(task.project.endDate) < now;
+
+      if (!isProjectOver) {
+        const recipientToken =
+          task.assignee?.expoPushToken || task.creator?.expoPushToken;
+        if (recipientToken) {
+          await this.notificationService.sendPushNotification(
+            recipientToken,
+            'Bottleneck Alert',
+            `The task "${task.title}" from the project ${task.project.projectName} has been in progress for more than ${bottleneckThreshold} days.`,
+            {
+              type: 'report',
+              projectId: task.project.id,
+              projectName: task.project.projectName,
+              startDate: task.project.startDate.toISOString(),
+              endDate: task.project.endDate.toISOString(),
+            },
+          );
+        }
       }
     }
 

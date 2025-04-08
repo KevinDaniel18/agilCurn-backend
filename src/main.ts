@@ -12,6 +12,8 @@ async function bootstrap() {
       process.env.URL_PRODUCTION,
       'https://new-password-agil-curn.vercel.app',
       'http://localhost:8081',
+      'https://invitations-ten.vercel.app',
+      "http://192.168.1.22:3001"
     ],
     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
     allowedHeaders: 'Content-Type, Authorization',
@@ -27,4 +29,3 @@ async function bootstrap() {
   console.log(`Application is running on: http://localhost:${port}`);
 }
 bootstrap();
-

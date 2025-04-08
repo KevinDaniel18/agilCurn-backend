@@ -8,7 +8,12 @@ export class NotificationService {
     this.expo = new Expo();
   }
 
-  async sendPushNotification(token: string, title: string, body: string) {
+  async sendPushNotification(
+    token: string,
+    title: string,
+    body: string,
+    data?: Record<string, any>,
+  ) {
     if (!Expo.isExpoPushToken(token)) {
       console.error(`Push token ${token} is not a valid Expo push token`);
       return;
@@ -21,7 +26,7 @@ export class NotificationService {
       sound: 'default',
       title: title,
       body: body,
-      data: { withSome: 'data' },
+      data: data ?? {},
     });
 
     let chunks = this.expo.chunkPushNotifications(messages);

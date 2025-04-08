@@ -34,7 +34,7 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
   constructor(
     private readonly jwtService: JwtService,
     private readonly chatService: ChatService,
-    private readonly notificationsService: NotificationService
+    private readonly notificationsService: NotificationService,
   ) {}
 
   async handleConnection(client: Socket) {
@@ -93,6 +93,12 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
           recipient.expoPushToken,
           sender.fullname,
           chatMessage.message,
+          {
+            type: 'message',
+            senderId: sender.id,
+            senderName: sender.fullname,
+            messageId: savedMessage.id,
+          },
         );
       }
       client.emit('messageStatus', {

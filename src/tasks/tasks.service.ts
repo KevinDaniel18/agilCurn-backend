@@ -206,6 +206,7 @@ export class TasksService {
       },
       include: {
         creator: { include: { roles: { include: { role: true } } } },
+        assignee: { select: { id: true, fullname: true } },
         project: { include: { userRoles: true } },
       },
     });
