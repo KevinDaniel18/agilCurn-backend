@@ -13,7 +13,6 @@ async function bootstrap() {
       'https://new-password-agil-curn.vercel.app',
       'http://localhost:8081',
       'https://invitations-ten.vercel.app',
-      "http://192.168.1.22:3001"
     ],
     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
     allowedHeaders: 'Content-Type, Authorization',
