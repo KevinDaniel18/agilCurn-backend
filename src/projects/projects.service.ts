@@ -1,6 +1,7 @@
 import {
   BadRequestException,
   ConflictException,
+  ForbiddenException,
   Injectable,
   InternalServerErrorException,
   NotFoundException,
@@ -13,6 +14,7 @@ import {
 } from '@prisma/client';
 import { MailService } from 'src/mail.service';
 import { PrismaService } from 'src/prisma.service';
+import { UpdateProjectDto } from './dto/update-project.dto';
 
 @Injectable()
 export class ProjectsService {
@@ -367,6 +369,82 @@ export class ProjectsService {
       project.creator,
       ...invitations.map((invitation) => invitation.invited),
     ];
+  }
+
+  async updateProject(
+    projectId: number,
+    userId: number,
+    data: UpdateProjectDto,
+  ) {
+    // Verificar rol admin
+    const userRole = await this.prisma.userRole.findFirst({
+      where: { userId, projectId, roleId: 1 },
+    });
+
+    if (!userRole) {
+      throw new ForbiddenException(
+        'No tienes permisos para actualizar este proyecto.',
+      );
+    }
+
+    // Verificar existencia del proyecto
+    const project = await this.prisma.project.findUnique({
+      where: { id: projectId },
+      include: { Sprint: true },
+    });
+
+    if (!project) {
+      throw new NotFoundException('Proyecto no encontrado');
+    }
+
+    // Validar fechas si se modificó startDate
+    if (data.startDate) {
+      const sprintsOutsideRange = project.Sprint.filter(
+        (sprint) => sprint.startDate < new Date(data.startDate),
+      );
+
+      if (
+        sprintsOutsideRange.length > 0 &&
+        (!data.sprints || data.sprints.length === 0)
+      ) {
+        throw new BadRequestException({
+          message:
+            'Existen sprints cuya fecha de inicio es anterior a la nueva fecha de inicio del proyecto. Modifícalos antes de continuar.',
+          sprints: sprintsOutsideRange.map(
+            ({ id, sprintName, startDate, endDate }) => ({
+              id,
+              sprintName,
+              startDate,
+              endDate,
+            }),
+          ),
+        });
+      }
+    }
+
+    // Si se enviaron sprints actualizados, los actualizamos
+    if (data.sprints && data.sprints.length > 0) {
+      for (const sprint of data.sprints) {
+        await this.prisma.sprint.update({
+          where: { id: Number(sprint.id) },
+          data: {
+            sprintName: sprint.sprintName,
+            startDate: new Date(sprint.startDate),
+            endDate: new Date(sprint.endDate),
+          },
+        });
+      }
+    }
+
+    // Finalmente, actualizar el proyecto
+    return this.prisma.project.update({
+      where: { id: projectId },
+      data: {
+        projectName: data.projectName,
+        startDate: data.startDate ? new Date(data.startDate) : undefined,
+        endDate: data.endDate ? new Date(data.endDate) : undefined,
+      },
+    });
   }
 
   async uploadDocument(

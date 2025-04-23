@@ -39,9 +39,9 @@ model Message {
   createdAt DateTime @default(now())
   message   String
   fromId    Int
-  from      User     @relation("SentMessages", fields: [fromId], references: [id])
+  from      User     @relation("SentMessages", fields: [fromId], references: [id], onDelete: Cascade)
   toId      Int
-  to        User     @relation("ReceivedMessages", fields: [toId], references: [id])
+  to        User     @relation("ReceivedMessages", fields: [toId], references: [id], onDelete: Cascade)
   deletedBy Int?
 }
 
@@ -52,7 +52,7 @@ model Project {
   endDate     DateTime
   invitations InvitationToProject[]
   creatorId   Int
-  creator     User                  @relation("CreatedProjects", fields: [creatorId], references: [id])
+  creator     User                  @relation("CreatedProjects", fields: [creatorId], references: [id], onDelete: Cascade)
   tasks       Task[]                @relation("ProjectTasks")
   documents   ProjectDocument[]     @relation("ProjectDocuments")
   userRoles   UserRole[]            @relation("ProjectRoles")
@@ -70,11 +70,11 @@ model Role {
 model UserRole {
   id        Int     @id @default(autoincrement())
   userId    Int
-  user      User    @relation("UserRoles", fields: [userId], references: [id])
+  user      User    @relation("UserRoles", fields: [userId], references: [id], onDelete: Cascade)
   projectId Int
-  project   Project @relation("ProjectRoles", fields: [projectId], references: [id])
+  project   Project @relation("ProjectRoles", fields: [projectId], references: [id], onDelete: Cascade)
   roleId    Int
-  role      Role    @relation("RoleUsers", fields: [roleId], references: [id])
+  role      Role    @relation("RoleUsers", fields: [roleId], references: [id], onDelete: Cascade)
 }
 
 model ProjectDocument {
@@ -83,17 +83,17 @@ model ProjectDocument {
   fileUrl    String
   uploadedAt DateTime @default(now())
   projectId  Int
-  project    Project  @relation("ProjectDocuments", fields: [projectId], references: [id])
+  project    Project  @relation("ProjectDocuments", fields: [projectId], references: [id], onDelete: Cascade)
   uploaderId Int
-  uploader   User     @relation(fields: [uploaderId], references: [id])
+  uploader   User     @relation(fields: [uploaderId], references: [id], onDelete: Cascade)
 }
 
 model InvitationToProject {
   id        Int      @id @default(autoincrement())
   projectId Int
-  project   Project  @relation(fields: [projectId], references: [id])
+  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
   invitedId Int
-  invited   User     @relation("InvitedProjects", fields: [invitedId], references: [id])
+  invited   User     @relation("InvitedProjects", fields: [invitedId], references: [id], onDelete: Cascade)
   confirmed Boolean  @default(false)
   createdAt DateTime @default(now())
 }

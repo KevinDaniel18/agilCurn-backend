@@ -13,6 +13,7 @@ import {
   UseGuards,
   DefaultValuePipe,
   Query,
+  Patch,
 } from '@nestjs/common';
 import { ProjectsService } from './projects.service';
 import {
@@ -25,6 +26,7 @@ import { FileInterceptor } from '@nestjs/platform-express';
 import { PrismaService } from 'src/prisma.service';
 import { Response } from 'express';
 import { JwtAuthGuard } from 'src/authentication/auth.guard';
+import { UpdateProjectDto } from './dto/update-project.dto';
 
 @Controller('projects')
 export class ProjectsController {
@@ -101,6 +103,17 @@ export class ProjectsController {
     @Param('id', ParseIntPipe) projectId: number,
   ): Promise<User[]> {
     return this.projectService.getInvitedUsers(projectId);
+  }
+
+  @Patch(':id')
+  @UseGuards(JwtAuthGuard)
+  async updateProject(
+    @Param('id', ParseIntPipe) projectId: number,
+    @Body() data: UpdateProjectDto,
+    @Request() req: any,
+  ) {
+    const userId = req.user.id;
+    return this.projectService.updateProject(projectId, userId, data);
   }
 
   @Post(':id/documents/upload')
